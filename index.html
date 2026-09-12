@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PerplexWare</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            text-align: center;
+            opacity: 0;
+            animation: fadeIn 2s ease-out forwards;
+            z-index: 1;
+            position: relative;
+            padding: 0 2rem;
+        }
+
+        .smiley {
+            font-size: 16rem;
+            line-height: 1;
+            margin-bottom: 3rem;
+            filter: drop-shadow(0 0 30px rgba(255, 255, 255, 0.5));
+            animation: float 6s ease-in-out infinite;
+        }
+
+        h1 {
+            font-size: clamp(2.5rem, 6vw, 5.5rem);
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            opacity: 0.95;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.4);
+            line-height: 1.2;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-25px); }
+        }
+
+        @media (max-width: 768px) {
+            .smiley { font-size: 9rem; margin-bottom: 2rem; }
+            h1 { font-size: clamp(1.8rem, 8vw, 3rem); letter-spacing: 0.1em; }
+        }
+
+        @media (min-width: 769px) and (max-width: 1200px) {
+            .smiley { font-size: 13rem; }
+            h1 { font-size: clamp(3rem, 5vw, 4.5rem); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="pixelCanvas"></canvas>
+    <div class="container">
+        <div class="smiley">☺</div>
+        <h1>PerplexWare Are Here Soon</h1>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('pixelCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        const PARTICLE_COUNT = 150;
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        class PixelParticle {
+            constructor() {
+                this.reset(true);
+            }
+
+            reset(initial = false) {
+                this.x = Math.random() * canvas.width;
+                this.y = initial ? Math.random() * canvas.height : canvas.height + 10;
+                this.size = Math.random() * 3 + 1;
+                this.speedY = Math.random() * 1.8 + 0.4;
+                this.opacity = Math.random() * 0.6 + 0.1;
+                this.fadeSpeed = Math.random() * 0.003 + 0.001;
+            }
+
+            update() {
+                this.y -= this.speedY;
+                this.opacity -= this.fadeSpeed;
+
+                if (this.y < -10 || this.opacity <= 0) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.size, this.size);
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < PARTICLE_COUNT; i++) {
+                particles.push(new PixelParticle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            for (const particle of particles) {
+                particle.update();
+                particle.draw();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            resize();
+            initParticles();
+        });
+
+        resize();
+        initParticles();
+        animate();
+    </script>
+</body>
+</html>
