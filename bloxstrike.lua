@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/Keysystem%20V6.luau"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/obfuscated_script-1789258581127.lua.txt"))()
 
 getgenv().Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/Naellx/Oxidelib/refs/heads/main/Oxidelib.lua"))()
 
