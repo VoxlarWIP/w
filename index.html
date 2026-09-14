@@ -145,15 +145,31 @@
             </p>
 
             <!-- Loadstring Section -->
-            <div class="max-w-3xl mx-auto w-full glass-card rounded-2xl p-6 md:p-8 relative group">
+            <div class="max-w-3xl mx-auto w-full glass-card rounded-2xl p-6 md:p-8 relative group flex flex-col gap-6">
                 <div class="absolute -inset-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition duration-500 pointer-events-none"></div>
-                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                
+                <!-- Bloxstrike -->
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 z-10">
                     <div class="w-full">
                         <p class="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-2 text-left ml-2">Bloxstrike</p>
                         <div class="bg-black/50 border border-gray-800 rounded-xl p-4 flex items-center justify-between relative overflow-hidden group/code">
-                            <code id="loadstring" class="font-mono text-sm md:text-base text-gray-300 break-all text-left block w-full pr-12 selection:bg-gray-700">loadstring(game:HttpGet("https://perplexware-eta.vercel.app/bloxstrike.lua"))()</code>
+                            <code id="loadstring-bloxstrike" class="font-mono text-sm md:text-base text-gray-300 break-all text-left block w-full pr-12 selection:bg-gray-700">loadstring(game:HttpGet("https://perplexware-eta.vercel.app/bloxstrike.lua"))()</code>
                             
-                            <button onclick="copyLoadstring()" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/20 group-hover/code:opacity-100 opacity-70" title="Copy to clipboard">
+                            <button onclick="copyLoadstring('loadstring-bloxstrike')" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/20 group-hover/code:opacity-100 opacity-70" title="Copy to clipboard">
+                                <i class="ph ph-copy text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sniper Arena -->
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4 z-10">
+                    <div class="w-full">
+                        <p class="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-2 text-left ml-2">Sniper Arena</p>
+                        <div class="bg-black/50 border border-gray-800 rounded-xl p-4 flex items-center justify-between relative overflow-hidden group/code">
+                            <code id="loadstring-sniperarena" class="font-mono text-sm md:text-base text-gray-300 break-all text-left block w-full pr-12 selection:bg-gray-700">loadstring(game:HttpGet("https://perplexware.vercel.app/sniperarena.lua"))()</code>
+                            
+                            <button onclick="copyLoadstring('loadstring-sniperarena')" class="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-white transition-all hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-white/20 group-hover/code:opacity-100 opacity-70" title="Copy to clipboard">
                                 <i class="ph ph-copy text-xl"></i>
                             </button>
                         </div>
@@ -239,8 +255,8 @@
 
     <script>
         // Copy functionality
-        function copyLoadstring() {
-            const loadstringText = document.getElementById('loadstring').innerText;
+        function copyLoadstring(elementId) {
+            const loadstringText = document.getElementById(elementId).innerText;
             const toast = document.getElementById('toast');
             
             // Try modern clipboard API first
