@@ -1,9 +1,11 @@
+-- v3
 local ACTIVE_CONFIG = getgenv().config or "AutoEscape"
 
 local EXPERIENCE_RUNAWAYS    = "117311404196294"
 local EXPERIENCE_LOBBY       = "118418618261207"
 
-local COUNTDOWN_DURATION     = 135
+local COUNTDOWN_DURATION     = 125
+local SILENT_COUNTDOWN_DURATION = 135
 local LOOT_COLLECT_RANGE     = 15
 local LOOT_SEARCH_RANGE      = 750
 local ANTI_BACKWARD_THRESHOLD = -1
@@ -17,7 +19,6 @@ local MINUS_CLICKS           = 7
 local MINUS_CLICK_INTERVAL   = 0.2 / 7
 local MINUS_X_OFFSET         = 40
 local GUI_CLICK_RELEASE_WAIT = 0.03
-
 local REPLAY_CLICK_DELAY     = 2
 
 local IDLE_TEXTS = { "Escape Process.", "Escape Process..", "Escape Process..." }
@@ -54,6 +55,7 @@ local autoEscapeRunning = false
 local gamePaused        = false
 local countdownActive   = false
 local countdownEndTime  = 0
+local screenFound       = false
 
 local pauseLastStep = tick()
 Services.RunService.Heartbeat:Connect(function()
@@ -102,77 +104,6 @@ local function firePrompt(prompt)
     end)
 end
 
-local screenGui, countdownFrame, countdownLabel
-
-local function buildCountdownUI()
-    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-
-    screenGui = Instance.new("ScreenGui")
-    screenGui.Name            = "EscapeCountdownGui"
-    screenGui.ResetOnSpawn    = false
-    screenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder    = 10
-    screenGui.Parent          = playerGui
-
-    countdownFrame = Instance.new("Frame")
-    countdownFrame.Name              = "CountdownFrame"
-    countdownFrame.Size              = UDim2.fromOffset(260, 52)
-    countdownFrame.Position          = UDim2.new(0.5, -130, 0, 18)
-    countdownFrame.BackgroundColor3  = Color3.fromRGB(12, 0, 28)
-    countdownFrame.BackgroundTransparency = 0.18
-    countdownFrame.BorderSizePixel   = 0
-    countdownFrame.Parent            = screenGui
-
-    local frameCorner = Instance.new("UICorner")
-    frameCorner.CornerRadius = UDim.new(0, 10)
-    frameCorner.Parent       = countdownFrame
-
-    local outerStroke = Instance.new("UIStroke")
-    outerStroke.Color     = COLOR_STROKE_DARK
-    outerStroke.Thickness = 4
-    outerStroke.Parent    = countdownFrame
-
-    local innerFrame = Instance.new("Frame")
-    innerFrame.Name                     = "InnerBorder"
-    innerFrame.Size                     = UDim2.new(1, -6, 1, -6)
-    innerFrame.Position                 = UDim2.fromOffset(3, 3)
-    innerFrame.BackgroundTransparency   = 1
-    innerFrame.BorderSizePixel          = 0
-    innerFrame.Parent                   = countdownFrame
-
-    local innerCorner = Instance.new("UICorner")
-    innerCorner.CornerRadius = UDim.new(0, 8)
-    innerCorner.Parent       = innerFrame
-
-    local innerStroke = Instance.new("UIStroke")
-    innerStroke.Color     = COLOR_STROKE_LIGHT
-    innerStroke.Thickness = 2
-    innerStroke.Parent    = innerFrame
-
-    countdownLabel = Instance.new("TextLabel")
-    countdownLabel.Name                = "CountdownLabel"
-    countdownLabel.Size                = UDim2.new(1, 0, 1, 0)
-    countdownLabel.BackgroundTransparency = 1
-    countdownLabel.TextColor3          = COLOR_TEXT
-    countdownLabel.TextSize            = 20
-    countdownLabel.Font                = Enum.Font.GothamBold
-    countdownLabel.Text                = IDLE_TEXTS[1]
-    countdownLabel.TextXAlignment      = Enum.TextXAlignment.Center
-    countdownLabel.TextYAlignment      = Enum.TextYAlignment.Center
-    countdownLabel.Parent              = countdownFrame
-
-    local labelStroke = Instance.new("UIStroke")
-    labelStroke.Color     = COLOR_STROKE_DARK
-    labelStroke.Thickness = 2
-    labelStroke.Parent    = countdownLabel
-end
-
-local function formatTime(seconds)
-    local mins = math.floor(seconds / 60)
-    local secs = seconds % 60
-    return string.format("%d:%02d", mins, secs)
-end
-
 local function clickGui(gui, xOffset)
     local pos   = gui.AbsolutePosition
     local size  = gui.AbsoluteSize
@@ -202,13 +133,10 @@ end
 local function runReplaySequence()
     task.spawn(function()
         local playerGui = LocalPlayer:WaitForChild("PlayerGui")
-
         task.wait(REPLAY_CLICK_DELAY)
-
         local endFrame = playerGui:WaitForChild("EndFrame")
         local frame    = endFrame:WaitForChild("Frame")
         local replay   = frame:WaitForChild("Replay")
-
         if waitForGuiLoaded(replay) then
             while true do
                 clickGui(replay)
@@ -216,6 +144,81 @@ local function runReplaySequence()
             end
         end
     end)
+end
+
+local screenGui, countdownFrame, countdownLabel
+
+local function buildCountdownUI()
+    local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+    screenGui = Instance.new("ScreenGui")
+    screenGui.Name            = "EscapeCountdownGui"
+    screenGui.ResetOnSpawn    = false
+    screenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder    = 9999
+    screenGui.IgnoreGuiInset  = true
+    screenGui.Parent          = playerGui
+
+    countdownFrame = Instance.new("Frame")
+    countdownFrame.Name              = "CountdownFrame"
+    countdownFrame.Size              = UDim2.fromOffset(260, 52)
+    countdownFrame.Position          = UDim2.new(0.5, -130, 0, 18)
+    countdownFrame.BackgroundColor3  = Color3.fromRGB(12, 0, 28)
+    countdownFrame.BackgroundTransparency = 0.18
+    countdownFrame.BorderSizePixel   = 0
+    countdownFrame.ZIndex            = 9999
+    countdownFrame.Parent            = screenGui
+
+    local frameCorner = Instance.new("UICorner")
+    frameCorner.CornerRadius = UDim.new(0, 10)
+    frameCorner.Parent       = countdownFrame
+
+    local outerStroke = Instance.new("UIStroke")
+    outerStroke.Color     = COLOR_STROKE_DARK
+    outerStroke.Thickness = 4
+    outerStroke.Parent    = countdownFrame
+
+    local innerFrame = Instance.new("Frame")
+    innerFrame.Name                     = "InnerBorder"
+    innerFrame.Size                     = UDim2.new(1, -6, 1, -6)
+    innerFrame.Position                 = UDim2.fromOffset(3, 3)
+    innerFrame.BackgroundTransparency   = 1
+    innerFrame.BorderSizePixel          = 0
+    innerFrame.ZIndex                   = 9999
+    innerFrame.Parent                   = countdownFrame
+
+    local innerCorner = Instance.new("UICorner")
+    innerCorner.CornerRadius = UDim.new(0, 8)
+    innerCorner.Parent       = innerFrame
+
+    local innerStroke = Instance.new("UIStroke")
+    innerStroke.Color     = COLOR_STROKE_LIGHT
+    innerStroke.Thickness = 2
+    innerStroke.Parent    = innerFrame
+
+    countdownLabel = Instance.new("TextLabel")
+    countdownLabel.Name                = "CountdownLabel"
+    countdownLabel.Size                = UDim2.new(1, 0, 1, 0)
+    countdownLabel.BackgroundTransparency = 1
+    countdownLabel.TextColor3          = COLOR_TEXT
+    countdownLabel.TextSize            = 20
+    countdownLabel.Font                = Enum.Font.GothamBold
+    countdownLabel.Text                = IDLE_TEXTS[1]
+    countdownLabel.TextXAlignment      = Enum.TextXAlignment.Center
+    countdownLabel.TextYAlignment      = Enum.TextYAlignment.Center
+    countdownLabel.ZIndex              = 9999
+    countdownLabel.Parent              = countdownFrame
+
+    local labelStroke = Instance.new("UIStroke")
+    labelStroke.Color     = COLOR_STROKE_DARK
+    labelStroke.Thickness = 2
+    labelStroke.Parent    = countdownLabel
+end
+
+local function formatTime(seconds)
+    local mins = math.floor(seconds / 60)
+    local secs = seconds % 60
+    return string.format("%d:%02d", mins, secs)
 end
 
 local function startCountdown()
@@ -243,6 +246,21 @@ local function startCountdown()
     end)
 end
 
+local function startSilentCountdown()
+    task.spawn(function()
+        task.wait(SILENT_COUNTDOWN_DURATION)
+
+        local character = LocalPlayer.Character
+        local hum = character and character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.Health = 0
+        end
+
+        task.wait(REPLAY_CLICK_DELAY)
+        runReplaySequence()
+    end)
+end
+
 local idleTextIndex = 1
 task.spawn(function()
     while true do
@@ -253,6 +271,16 @@ task.spawn(function()
         end
     end
 end)
+
+local function getScreen()
+    local map      = Services.Workspace:FindFirstChild("Map")
+    local buildings = map and map:FindFirstChild("Buildings")
+    local customs  = buildings and buildings:FindFirstChild("CustomsFinal")
+    local building = customs and customs:FindFirstChild("CustomsBuilding")
+    local door     = building and building:FindFirstChild("FinalDoor")
+    local cmd      = door and door:FindFirstChild("Command")
+    return cmd and cmd:FindFirstChild("Screen")
+end
 
 local ExcludedLootNames = {
     Gramophone  = true,
@@ -533,17 +561,27 @@ local function runAutoEscape()
         if not hrp or not hum then return end
 
         autoEscapeRunning = true
+        screenFound = false
 
         fastTweenCFrame(hrp, hrp.CFrame + LAUNCH_HEIGHT)
         task.wait(0.05)
 
-        local lastCheck       = 0
-        local lastPos         = hrp.Position
+        local lastCheck    = 0
+        local lastPos      = hrp.Position
 
         local antiBackwardConn = Services.RunService.Heartbeat:Connect(function()
+            if screenFound then return end
             local chr  = LocalPlayer.Character
             local root = chr and chr:FindFirstChild("HumanoidRootPart")
             if not root then return end
+
+            local screen = getScreen()
+            if screen then
+                screenFound = true
+                root.AssemblyLinearVelocity = Vector3.zero
+                return
+            end
+
             local delta = root.Position - lastPos
             if delta.Z < ANTI_BACKWARD_THRESHOLD then
                 root.CFrame = CFrame.new(lastPos) * (root.CFrame - root.CFrame.Position)
@@ -558,21 +596,31 @@ local function runAutoEscape()
             local root = chr and chr:FindFirstChild("HumanoidRootPart")
 
             if root then
-                local moved = root.Position + FORWARD_STEP
-                fastTweenCFrame(root, CFrame.new(moved) * (root.CFrame - root.CFrame.Position))
-                root.AssemblyLinearVelocity = Vector3.zero
+                if not screenFound then
+                    local screen = getScreen()
+                    if screen then
+                        screenFound = true
+                    end
+                end
+
+                if screenFound then
+                    local screen = getScreen()
+                    if screen then
+                        local screenCFrame = screen:IsA("BasePart") and screen.CFrame or screen:GetPivot()
+                        fastTweenCFrame(root, screenCFrame + Vector3.new(0, 1, 0))
+                        root.AssemblyLinearVelocity = Vector3.zero
+                    end
+                else
+                    local moved = root.Position + FORWARD_STEP
+                    fastTweenCFrame(root, CFrame.new(moved) * (root.CFrame - root.CFrame.Position))
+                    root.AssemblyLinearVelocity = Vector3.zero
+                end
             end
 
             if tick() - lastCheck >= 0.25 then
                 lastCheck = tick()
 
-                local map      = Services.Workspace:FindFirstChild("Map")
-                local buildings = map and map:FindFirstChild("Buildings")
-                local customs  = buildings and buildings:FindFirstChild("CustomsFinal")
-                local building = customs and customs:FindFirstChild("CustomsBuilding")
-                local door     = building and building:FindFirstChild("FinalDoor")
-                local cmd      = door and door:FindFirstChild("Command")
-                local screen   = cmd and cmd:FindFirstChild("Screen")
+                local screen = getScreen()
 
                 if screen and root then
                     antiBackwardConn:Disconnect()
@@ -723,6 +771,7 @@ buildCountdownUI()
 if currentPlaceId == EXPERIENCE_LOBBY then
     runLobbySequence()
 elseif currentPlaceId == EXPERIENCE_RUNAWAYS then
+    startSilentCountdown()
     if ACTIVE_CONFIG == "MoneyFarm" then
         runMoneyFarmLoop()
         runAutoEscape()
