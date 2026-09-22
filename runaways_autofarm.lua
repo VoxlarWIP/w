@@ -18,6 +18,8 @@ local MINUS_CLICK_INTERVAL   = 0.2 / 7
 local MINUS_X_OFFSET         = 40
 local GUI_CLICK_RELEASE_WAIT = 0.03
 
+local REPLAY_CLICK_DELAY     = 2
+
 local IDLE_TEXTS = { "Escape Process.", "Escape Process..", "Escape Process..." }
 local IDLE_INTERVAL = 0.75
 
@@ -109,6 +111,7 @@ local function buildCountdownUI()
     screenGui.Name            = "EscapeCountdownGui"
     screenGui.ResetOnSpawn    = false
     screenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder    = 10
     screenGui.Parent          = playerGui
 
     countdownFrame = Instance.new("Frame")
@@ -170,6 +173,51 @@ local function formatTime(seconds)
     return string.format("%d:%02d", mins, secs)
 end
 
+local function clickGui(gui, xOffset)
+    local pos   = gui.AbsolutePosition
+    local size  = gui.AbsoluteSize
+    local inset = Services.GuiService:GetGuiInset()
+
+    local x = pos.X + size.X / 2 + (xOffset or 0)
+    local y = pos.Y + size.Y / 2 + inset.Y
+
+    Services.VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
+    task.wait(GUI_CLICK_RELEASE_WAIT)
+    Services.VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
+end
+
+local function waitForGuiLoaded(guiObject, timeout)
+    local elapsed = 0
+    local interval = 0.05
+    while elapsed < (timeout or 10) do
+        if guiObject and guiObject.AbsoluteSize.X > 0 and guiObject.AbsoluteSize.Y > 0 then
+            return true
+        end
+        task.wait(interval)
+        elapsed += interval
+    end
+    return false
+end
+
+local function runReplaySequence()
+    task.spawn(function()
+        local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+        task.wait(REPLAY_CLICK_DELAY)
+
+        local endFrame = playerGui:WaitForChild("EndFrame")
+        local frame    = endFrame:WaitForChild("Frame")
+        local replay   = frame:WaitForChild("Replay")
+
+        if waitForGuiLoaded(replay) then
+            while true do
+                clickGui(replay)
+                task.wait()
+            end
+        end
+    end)
+end
+
 local function startCountdown()
     if countdownActive then return end
     countdownActive = true
@@ -184,12 +232,10 @@ local function startCountdown()
             if remaining <= 0 then
                 countdownActive = false
                 if countdownLabel then
-                    countdownLabel.Text = "Teleporting..."
+                    countdownLabel.Text = "Replaying..."
                 end
                 task.wait(0.5)
-                pcall(function()
-                    Services.TeleportService:Teleport(tonumber(EXPERIENCE_LOBBY), LocalPlayer)
-                end)
+                runReplaySequence()
                 break
             end
             task.wait(1)
@@ -626,32 +672,6 @@ local function runAutoEscape()
             task.wait(0.02)
         end
     end)
-end
-
-local function clickGui(gui, xOffset)
-    local pos   = gui.AbsolutePosition
-    local size  = gui.AbsoluteSize
-    local inset = Services.GuiService:GetGuiInset()
-
-    local x = pos.X + size.X / 2 + (xOffset or 0)
-    local y = pos.Y + size.Y / 2 + inset.Y
-
-    Services.VirtualInputManager:SendMouseButtonEvent(x, y, 0, true, game, 0)
-    task.wait(GUI_CLICK_RELEASE_WAIT)
-    Services.VirtualInputManager:SendMouseButtonEvent(x, y, 0, false, game, 0)
-end
-
-local function waitForGuiLoaded(guiObject, timeout)
-    local elapsed = 0
-    local interval = 0.05
-    while elapsed < (timeout or 10) do
-        if guiObject and guiObject.AbsoluteSize.X > 0 and guiObject.AbsoluteSize.Y > 0 then
-            return true
-        end
-        task.wait(interval)
-        elapsed += interval
-    end
-    return false
 end
 
 local function runLobbySequence()
