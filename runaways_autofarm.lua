@@ -1,18 +1,18 @@
--- v4
-local ACTIVE_CONFIG = getgenv().config or "AutoEscape"
+local ok, cfg = pcall(function() return getgenv().config end)
+local ACTIVE_CONFIG = (ok and cfg) or "AutoEscape"
 
 local EXPERIENCE_RUNAWAYS    = "117311404196294"
 local EXPERIENCE_LOBBY       = "118418618261207"
 
-local COUNTDOWN_DURATION     = 125
-local SILENT_COUNTDOWN_DURATION = 180
-local LOOT_COLLECT_RANGE     = 15
-local LOOT_SEARCH_RANGE      = 750
-local ANTI_BACKWARD_THRESHOLD = -1
-local FORWARD_STEP           = Vector3.new(0, 0, 100)
-local UNDERGROUND_OFFSET     = Vector3.new(0, 120, 0)
-local PLATFORM_FLOOR_OFFSET  = Vector3.new(0, 3, 0)
-local LAUNCH_HEIGHT          = Vector3.new(0, 500, 0)
+local COUNTDOWN_DURATION        = 125
+local SILENT_COUNTDOWN_DURATION = 135
+local LOOT_COLLECT_RANGE        = 15
+local LOOT_SEARCH_RANGE         = 750
+local ANTI_BACKWARD_THRESHOLD   = -1
+local FORWARD_STEP              = Vector3.new(0, 0, 100)
+local UNDERGROUND_OFFSET        = Vector3.new(0, 120, 0)
+local PLATFORM_FLOOR_OFFSET     = Vector3.new(0, 3, 0)
+local LAUNCH_HEIGHT             = Vector3.new(0, 500, 0)
 
 local LOBBY_CLICK_DELAY      = 2
 local MINUS_CLICKS           = 7
@@ -21,12 +21,12 @@ local MINUS_X_OFFSET         = 40
 local GUI_CLICK_RELEASE_WAIT = 0.03
 local REPLAY_CLICK_DELAY     = 2
 
-local IDLE_TEXTS = { "Escape Process.", "Escape Process..", "Escape Process..." }
+local IDLE_TEXTS    = { "Escape Process.", "Escape Process..", "Escape Process..." }
 local IDLE_INTERVAL = 0.75
 
-local COLOR_STROKE_LIGHT  = Color3.fromRGB(180, 120, 255)
-local COLOR_STROKE_DARK   = Color3.fromRGB(30, 0, 60)
-local COLOR_TEXT          = Color3.fromRGB(240, 220, 255)
+local COLOR_STROKE_LIGHT = Color3.fromRGB(180, 120, 255)
+local COLOR_STROKE_DARK  = Color3.fromRGB(30, 0, 60)
+local COLOR_TEXT         = Color3.fromRGB(240, 220, 255)
 
 local currentPlaceId = tostring(game.PlaceId)
 
@@ -118,7 +118,7 @@ local function clickGui(gui, xOffset)
 end
 
 local function waitForGuiLoaded(guiObject, timeout)
-    local elapsed = 0
+    local elapsed  = 0
     local interval = 0.05
     while elapsed < (timeout or 10) do
         if guiObject and guiObject.AbsoluteSize.X > 0 and guiObject.AbsoluteSize.Y > 0 then
@@ -152,22 +152,22 @@ local function buildCountdownUI()
     local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
     screenGui = Instance.new("ScreenGui")
-    screenGui.Name            = "EscapeCountdownGui"
-    screenGui.ResetOnSpawn    = false
-    screenGui.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder    = 9999
-    screenGui.IgnoreGuiInset  = true
-    screenGui.Parent          = playerGui
+    screenGui.Name           = "EscapeCountdownGui"
+    screenGui.ResetOnSpawn   = false
+    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    screenGui.DisplayOrder   = 9999
+    screenGui.IgnoreGuiInset = true
+    screenGui.Parent         = playerGui
 
     countdownFrame = Instance.new("Frame")
-    countdownFrame.Name              = "CountdownFrame"
-    countdownFrame.Size              = UDim2.fromOffset(260, 52)
-    countdownFrame.Position          = UDim2.new(0.5, -130, 0, 18)
-    countdownFrame.BackgroundColor3  = Color3.fromRGB(12, 0, 28)
+    countdownFrame.Name                   = "CountdownFrame"
+    countdownFrame.Size                   = UDim2.fromOffset(260, 52)
+    countdownFrame.Position               = UDim2.new(0.5, -130, 0, 18)
+    countdownFrame.BackgroundColor3       = Color3.fromRGB(12, 0, 28)
     countdownFrame.BackgroundTransparency = 0.18
-    countdownFrame.BorderSizePixel   = 0
-    countdownFrame.ZIndex            = 9999
-    countdownFrame.Parent            = screenGui
+    countdownFrame.BorderSizePixel        = 0
+    countdownFrame.ZIndex                 = 9999
+    countdownFrame.Parent                 = screenGui
 
     local frameCorner = Instance.new("UICorner")
     frameCorner.CornerRadius = UDim.new(0, 10)
@@ -179,13 +179,13 @@ local function buildCountdownUI()
     outerStroke.Parent    = countdownFrame
 
     local innerFrame = Instance.new("Frame")
-    innerFrame.Name                     = "InnerBorder"
-    innerFrame.Size                     = UDim2.new(1, -6, 1, -6)
-    innerFrame.Position                 = UDim2.fromOffset(3, 3)
-    innerFrame.BackgroundTransparency   = 1
-    innerFrame.BorderSizePixel          = 0
-    innerFrame.ZIndex                   = 9999
-    innerFrame.Parent                   = countdownFrame
+    innerFrame.Name                   = "InnerBorder"
+    innerFrame.Size                   = UDim2.new(1, -6, 1, -6)
+    innerFrame.Position               = UDim2.fromOffset(3, 3)
+    innerFrame.BackgroundTransparency = 1
+    innerFrame.BorderSizePixel        = 0
+    innerFrame.ZIndex                 = 9999
+    innerFrame.Parent                 = countdownFrame
 
     local innerCorner = Instance.new("UICorner")
     innerCorner.CornerRadius = UDim.new(0, 8)
@@ -197,17 +197,17 @@ local function buildCountdownUI()
     innerStroke.Parent    = innerFrame
 
     countdownLabel = Instance.new("TextLabel")
-    countdownLabel.Name                = "CountdownLabel"
-    countdownLabel.Size                = UDim2.new(1, 0, 1, 0)
+    countdownLabel.Name                   = "CountdownLabel"
+    countdownLabel.Size                   = UDim2.new(1, 0, 1, 0)
     countdownLabel.BackgroundTransparency = 1
-    countdownLabel.TextColor3          = COLOR_TEXT
-    countdownLabel.TextSize            = 20
-    countdownLabel.Font                = Enum.Font.GothamBold
-    countdownLabel.Text                = IDLE_TEXTS[1]
-    countdownLabel.TextXAlignment      = Enum.TextXAlignment.Center
-    countdownLabel.TextYAlignment      = Enum.TextYAlignment.Center
-    countdownLabel.ZIndex              = 9999
-    countdownLabel.Parent              = countdownFrame
+    countdownLabel.TextColor3             = COLOR_TEXT
+    countdownLabel.TextSize               = 20
+    countdownLabel.Font                   = Enum.Font.GothamBold
+    countdownLabel.Text                   = IDLE_TEXTS[1]
+    countdownLabel.TextXAlignment         = Enum.TextXAlignment.Center
+    countdownLabel.TextYAlignment         = Enum.TextYAlignment.Center
+    countdownLabel.ZIndex                 = 9999
+    countdownLabel.Parent                 = countdownFrame
 
     local labelStroke = Instance.new("UIStroke")
     labelStroke.Color     = COLOR_STROKE_DARK
@@ -305,7 +305,7 @@ local function isExcludedLoot(name)
     local query = string.lower(name:gsub("%s+", ""):gsub("_+", ""))
     for key in pairs(ExcludedLootNames) do
         local test = string.lower(key:gsub("%s+", ""):gsub("_+", ""))
-        if query == test or string.find(query, test) olocalcalring.find(test, query) then
+        if query == test or string.find(query, test) or string.find(test, query) then
             return true
         end
     end
@@ -362,8 +362,8 @@ end
 
 local function lootNearby(range)
     if isInventoryFull() then return end
-    local character = LocalPlayer.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    local character  = LocalPlayer.Character
+    local hrp        = character and character:FindFirstChild("HumanoidRootPart")
     local lootFolder = Services.Workspace:FindFirstChild("Loot")
     if not hrp or not lootFolder or not getFlowEvent() then return end
 
@@ -409,7 +409,7 @@ end
 
 local function getNearestPawnShop()
     local character = LocalPlayer.Character
-    local hrp = character and character:FindFirstChild("HumanoidRootPart")
+    local hrp       = character and character:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil end
 
     local buildings = Services.Workspace:FindFirstChild("Map")
@@ -509,7 +509,7 @@ local function runMoneyFarmLoop()
                     hrp.CFrame = CFrame.lookAt(sellTarget, pawn.Position)
                     task.wait(0.2)
 
-                    local inv, _   = getInventoryCount()
+                    local inv, _ = getInventoryCount()
                     local stuckCount = 0
                     while inv > 0 do
                         pressKey(Enum.KeyCode.One)
