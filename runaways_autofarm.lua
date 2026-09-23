@@ -1,11 +1,11 @@
--- v3
+-- v4
 local ACTIVE_CONFIG = getgenv().config or "AutoEscape"
 
 local EXPERIENCE_RUNAWAYS    = "117311404196294"
 local EXPERIENCE_LOBBY       = "118418618261207"
 
 local COUNTDOWN_DURATION     = 125
-local SILENT_COUNTDOWN_DURATION = 180
+local SILENT_COUNTDOWN_DURATION = 135
 local LOOT_COLLECT_RANGE     = 15
 local LOOT_SEARCH_RANGE      = 750
 local ANTI_BACKWARD_THRESHOLD = -1
@@ -273,31 +273,31 @@ task.spawn(function()
 end)
 
 local function getScreen()
-    local map      = Services.Workspace:FindFirstChild("Map")
+    local map       = Services.Workspace:FindFirstChild("Map")
     local buildings = map and map:FindFirstChild("Buildings")
-    local customs  = buildings and buildings:FindFirstChild("CustomsFinal")
-    local building = customs and customs:FindFirstChild("CustomsBuilding")
-    local door     = building and building:FindFirstChild("FinalDoor")
-    local cmd      = door and door:FindFirstChild("Command")
+    local customs   = buildings and buildings:FindFirstChild("CustomsFinal")
+    local building  = customs and customs:FindFirstChild("CustomsBuilding")
+    local door      = building and building:FindFirstChild("FinalDoor")
+    local cmd       = door and door:FindFirstChild("Command")
     return cmd and cmd:FindFirstChild("Screen")
 end
 
 local ExcludedLootNames = {
-    Gramophone  = true,
+    Gramophone     = true,
     ElectricGuitar = true,
-    Radio       = true,
-    Computer    = true,
-    Console     = true,
-    Floodlight  = true,
-    TV          = true,
-    Turret      = true,
-    PropaneTank = true,
-    MetalSheet  = true,
-    Plank       = true,
-    JerryCan    = true,
-    TrashBag    = true,
-    LifeBuoy    = true,
-    Tire        = true,
+    Radio          = true,
+    Computer       = true,
+    Console        = true,
+    Floodlight     = true,
+    TV             = true,
+    Turret         = true,
+    PropaneTank    = true,
+    MetalSheet     = true,
+    Plank          = true,
+    JerryCan       = true,
+    TrashBag       = true,
+    LifeBuoy       = true,
+    Tire           = true,
 }
 
 local function isExcludedLoot(name)
@@ -305,7 +305,7 @@ local function isExcludedLoot(name)
     local query = string.lower(name:gsub("%s+", ""):gsub("_+", ""))
     for key in pairs(ExcludedLootNames) do
         local test = string.lower(key:gsub("%s+", ""):gsub("_+", ""))
-        if query == test or string.find(query, test) or string.find(test, query) then
+        if query == test or string.find(query, test) olocalcalring.find(test, query) then
             return true
         end
     end
@@ -566,8 +566,8 @@ local function runAutoEscape()
         fastTweenCFrame(hrp, hrp.CFrame + LAUNCH_HEIGHT)
         task.wait(0.05)
 
-        local lastCheck    = 0
-        local lastPos      = hrp.Position
+        local lastCheck = 0
+        local lastPos   = hrp.Position
 
         local antiBackwardConn = Services.RunService.Heartbeat:Connect(function()
             if screenFound then return end
@@ -728,7 +728,7 @@ local function runLobbySequence()
 
         task.wait(LOBBY_CLICK_DELAY)
 
-        local hud = playerGui:WaitForChild("Hud")
+        local hud     = playerGui:WaitForChild("Hud")
         local playNow = hud:WaitForChild("PlayNow")
 
         if waitForGuiLoaded(playNow) then
@@ -771,7 +771,9 @@ buildCountdownUI()
 if currentPlaceId == EXPERIENCE_LOBBY then
     runLobbySequence()
 elseif currentPlaceId == EXPERIENCE_RUNAWAYS then
-    startSilentCountdown()
+    if ACTIVE_CONFIG ~= "MoneyFarm" then
+        startSilentCountdown()
+    end
     if ACTIVE_CONFIG == "MoneyFarm" then
         runMoneyFarmLoop()
         runAutoEscape()
