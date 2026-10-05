@@ -1,4 +1,4 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/obfuscated_script-1789258581127.lua.txt"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/PerplexWare_Keysystem.lua"))()
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
