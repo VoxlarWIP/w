@@ -3,18 +3,16 @@ export const config = {
 };
 
 export default function middleware(request) {
-  const ua = (request.headers.get('user-agent') || '').toLowerCase();
   const accept = (request.headers.get('accept') || '').toLowerCase();
+  const secFetchDest = (request.headers.get('sec-fetch-dest') || '').toLowerCase();
+  const secFetchMode = (request.headers.get('sec-fetch-mode') || '').toLowerCase();
 
-  const looksLikeBrowser =
-    accept.includes('text/html') ||
-    ua.includes('mozilla') ||
-    ua.includes('chrome') ||
-    ua.includes('safari') ||
-    ua.includes('firefox') ||
-    ua.includes('edg/');
+  const isBrowserNavigation =
+    secFetchDest === 'document' ||
+    secFetchMode === 'navigate' ||
+    accept.includes('text/html');
 
-  if (looksLikeBrowser) {
+  if (isBrowserNavigation) {
     return Response.redirect(
       new URL('/blocked.html', request.url),
       302
