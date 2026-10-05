@@ -1,9 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "proxy": {
-    "entrypoint": "middleware.js",
-    "matcher": ["/scripts", "/scripts/:path*"]
-  },
   "headers": [
     {
       "source": "/scripts/(.*)",
@@ -11,10 +7,6 @@
         {
           "key": "Cache-Control",
           "value": "no-store"
-        },
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, nofollow"
         }
       ]
     }
