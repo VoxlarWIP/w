@@ -1,20 +1,10 @@
 {
-  "version": 2,
-  "rewrites": [],
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "proxy": {
+    "entrypoint": "middleware.js",
+    "matcher": ["/scripts", "/scripts/:path*"]
+  },
   "headers": [
-    {
-      "source": "/.ppw",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/plain; charset=utf-8"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "no-store"
-        }
-      ]
-    },
     {
       "source": "/scripts/(.*)",
       "headers": [
