@@ -1,14 +1,8 @@
-export const config = {
-  matcher: ['/scripts', '/scripts/:path*', '/\\.ppw'],
-};
+import { next } from '@vercel/functions';
 
 export default function middleware(request) {
   const url = new URL(request.url);
   const path = url.pathname.toLowerCase();
-
-  if (path === '/.ppw') {
-    return;
-  }
 
   const ua = (request.headers.get('user-agent') || '').toLowerCase();
   const accept = (request.headers.get('accept') || '').toLowerCase();
@@ -23,10 +17,12 @@ export default function middleware(request) {
     ua.includes('edge') ||
     ua.includes('msie');
 
-  if (looksLikeBrowser) {
-    return Response.redirect(
-      new URL('/blocked.html', url.origin).toString(),
-      302
-    );
+  if (
+    (path === '/scripts' || path.startsWith('/scripts/')) &&
+    looksLikeBrowser
+  ) {
+    return Response.redirect(new URL('/blocked.html', url.origin), 302);
   }
+
+  return next();
 }
