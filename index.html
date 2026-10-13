@@ -18,10 +18,11 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card"       content="summary_large_image">
 <meta name="twitter:image"      content="https://perplexware.vercel.app/embed.png">
-<link rel="icon"             type="image/x-icon"  href="favicon.ico">
-<link rel="icon"             type="image/png" sizes="32x32" href="favicon-32.png">
-<link rel="icon"             type="image/png" sizes="16x16" href="favicon-16.png">
-<link rel="apple-touch-icon" sizes="180x180"       href="apple-touch-icon.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
+<link rel="icon" type="image/webp" href="favicon.webp">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
@@ -75,13 +76,31 @@ button{font:inherit;color:inherit}
 }
 /* Halloween overrides */
 [data-theme="halloween"]{
-  --bg:#0d0400;--bg2:#1a0900;--bg3:#2a1200;
-  --line:rgba(255,120,0,.18);--line2:rgba(255,120,0,.36);
-  --ink:#ff8c00;--ink2:#c86000;--ink3:#7a3800;
-  --glass:rgba(13,4,0,.72);
-  --shd:0 0 0 1px rgba(255,140,0,.15),0 20px 56px rgba(255,80,0,.18);
-  --logo-f:sepia(1) saturate(8) hue-rotate(-10deg) brightness(.9);
+  --bg:#0a0612;--bg2:#150b24;--bg3:#221238;
+  --line:rgba(255,122,26,.2);--line2:rgba(255,122,26,.42);
+  --ink:#ffe3c2;--ink2:#c9a4e0;--ink3:#8f6aa8;
+  --glass:rgba(10,6,18,.72);
+  --shd:0 0 0 1px rgba(255,122,26,.2),0 20px 56px rgba(120,40,200,.3);
+  --logo-f:sepia(1) saturate(7) hue-rotate(-12deg) brightness(.95);
 }
+body::before{
+  content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:0;
+  background:
+    radial-gradient(60% 45% at 50% -5%,rgba(168,85,247,.28),transparent 70%),
+    radial-gradient(55% 40% at 100% 100%,rgba(255,106,0,.2),transparent 70%),
+    radial-gradient(40% 35% at 0% 85%,rgba(120,40,200,.16),transparent 70%);
+  transition:opacity .5s var(--ease);
+}
+[data-theme="halloween"] body::before{opacity:1}
+[data-theme="halloween"] .bs{background:linear-gradient(135deg,#ff8a1f,#ff5a00);color:#1a0600;box-shadow:0 6px 22px rgba(255,100,0,.32)}
+[data-theme="halloween"] .wordmark{
+  background:linear-gradient(95deg,#ffb066 0%,#ff7a1a 45%,#c26bff 100%);
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;color:transparent;
+}
+[data-theme="halloween"] .art-img{filter:var(--logo-f) drop-shadow(0 0 28px rgba(255,110,0,.45))}
+[data-theme="halloween"] .dock a.on{background:linear-gradient(135deg,#ff8a1f,#ff5a00);color:#1a0600}
+[data-theme="halloween"] .seg-ind{background:var(--bg3);box-shadow:none}
 
 /* ══ BASE ════════════════════════════════════════ */
 body{
@@ -298,15 +317,16 @@ input.sel{-webkit-user-select:text;user-select:text}
 
 /* halloween snow/particles */
 .hw-particle{
-  position:fixed;top:-20px;pointer-events:none;z-index:999;
-  font-size:1.1rem;
+  position:fixed;top:-48px;pointer-events:none;z-index:999;
+  font-size:1.3rem;line-height:1;
   animation:hwfall linear forwards;
   will-change:transform,opacity;
 }
 @keyframes hwfall{
-  0%{translate:0 0;opacity:1;rotate:0deg}
-  80%{opacity:.8}
-  100%{translate:var(--dx) 110vh;opacity:0;rotate:var(--dr)}
+  0%{translate:0 0;opacity:0;rotate:0deg}
+  6%{opacity:1}
+  85%{opacity:.85}
+  100%{translate:var(--dx) 112vh;opacity:0;rotate:var(--dr)}
 }
 
 /* ══ SCRIPTS PAGE ════════════════════════════════ */
@@ -458,6 +478,44 @@ input.sel{-webkit-user-select:text;user-select:text}
 @keyframes tin{from{opacity:0;translate:0 10px;scale:.95}}
 @keyframes tout{to{opacity:0;translate:0 6px;scale:.97}}
 
+
+/* ══ MUSIC PLAYER ════════════════════════════════ */
+.mp{
+  position:fixed;left:22px;bottom:calc(22px + env(safe-area-inset-bottom));z-index:600;
+  display:flex;align-items:center;gap:6px;height:46px;padding:0 10px 0 6px;
+  max-width:min(340px,calc(100vw - 100px));
+  background:var(--glass);border:1px solid var(--line);border-radius:999px;
+  backdrop-filter:blur(20px) saturate(150%);
+  -webkit-backdrop-filter:blur(20px) saturate(150%);
+  box-shadow:0 4px 18px rgba(0,0,0,.35);
+  transition:background-color var(--td) var(--ease),border-color var(--td) var(--ease),box-shadow var(--td) var(--ease);
+}
+[data-theme="halloween"] .mp{box-shadow:0 4px 22px rgba(255,120,0,.35)}
+.mp-btn{
+  width:34px;height:34px;flex:none;border-radius:50%;border:0;
+  display:grid;place-items:center;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .12s var(--ease),background-color var(--td) var(--ease),color var(--td) var(--ease);
+}
+.mp-btn:active{transform:scale(.9)}
+.mp-btn svg{width:15px;height:15px}
+.mp-play{background:var(--ink);color:var(--bg)}
+[data-theme="halloween"] .mp-play{background:linear-gradient(135deg,#ff8a1f,#ff5a00);color:#1a0600}
+.mp-next{width:30px;height:30px;background:transparent;color:var(--ink2)}
+.mp-next:hover{background:var(--bg2);color:var(--ink)}
+.mp-play .i-pa{display:none}
+.mp-play[data-state="pause"] .i-pl{display:none}
+.mp-play[data-state="pause"] .i-pa{display:block}
+.mp-info{display:flex;flex-direction:column;flex:1 1 auto;min-width:0;line-height:1.2;padding:0 4px}
+.mp-lbl{font-size:.625rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--ink2);transition:color var(--td) var(--ease)}
+.mp-title{display:block;max-width:170px;font-size:.8125rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color var(--td) var(--ease)}
+.mp-eq{display:flex;align-items:flex-end;gap:2px;height:14px;width:14px;flex:none;margin-left:2px}
+.mp-eq b{flex:1;height:100%;border-radius:1px;background:var(--ink);transform:scaleY(.25);transform-origin:bottom;transition:background-color var(--td) var(--ease)}
+.mp.on .mp-eq b{animation:eq .9s ease-in-out infinite}
+.mp.on .mp-eq b:nth-child(2){animation-delay:.2s}
+.mp.on .mp-eq b:nth-child(3){animation-delay:.4s}
+@keyframes eq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+
 /* ══ MOBILE DOCK ═════════════════════════════════ */
 .dock{display:none}
 
@@ -481,6 +539,8 @@ input.sel{-webkit-user-select:text;user-select:text}
   .pg{padding-top:92px}
   .toasts{bottom:calc(88px + env(safe-area-inset-bottom))}
   .pumpkin-btn{bottom:calc(96px + env(safe-area-inset-bottom));right:18px}
+  .mp{left:18px;bottom:calc(96px + env(safe-area-inset-bottom));max-width:calc(100vw - 18px - 18px - 46px - 10px)}
+  .mp-title{max-width:none}
   html.locked .dock{opacity:0;pointer-events:none}
   .dock{
     display:flex;position:fixed;z-index:700;
@@ -568,6 +628,18 @@ input.sel{-webkit-user-select:text;user-select:text}
 </nav>
 
 <button class="pumpkin-btn" id="pumpkinBtn" type="button" aria-label="Halloween mode" title="🎃 Trick or treat?">🎃</button>
+
+<div class="mp" id="mp" role="region" aria-label="Music player">
+  <button class="mp-btn mp-play" id="mpPlay" type="button" data-state="play" aria-label="Play">
+    <svg class="i-pl" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+    <svg class="i-pa" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+  </button>
+  <div class="mp-info"><span class="mp-lbl">Playing this song</span><span class="mp-title" id="mpTitle">Loading…</span></div>
+  <button class="mp-btn mp-next" id="mpNext" type="button" aria-label="Next song">
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6.5v11a1 1 0 0 0 1.5.86l8-5.5a1 1 0 0 0 0-1.72l-8-5.5A1 1 0 0 0 6 6.5z"/><rect x="17" y="5.5" width="2.5" height="13" rx="1"/></svg>
+  </button>
+  <i class="mp-eq" aria-hidden="true"><b></b><b></b><b></b></i>
+</div>
 
 <main>
 
@@ -683,7 +755,7 @@ input.sel{-webkit-user-select:text;user-select:text}
       <ul class="dc-list">
         <li class="dc-li"><h3>🕯 Fresh scripts</h3><p>New releases get posted in the server the moment they drop.</p></li>
         <li class="dc-li"><h3>🗝 Keys</h3><p>BloxStrike V4.1, Sniper Arena and Runaways keys are handed out here.</p></li>
-        <li class="dc-li"><h3>👻 Coming soon</h3><p>Violence District and whatever cursed thing comes next is announced here first.</p></li>
+        <li class="dc-li"><h3>👻 Violence District V2</h3><p>Out now in Scripts. Whatever cursed thing comes next is announced here first.</p></li>
       </ul>
     </div>
   </div>
@@ -747,10 +819,10 @@ var SCRIPTS=[
   {id:'bsv3',  name:'BloxStrike',        ver:'v3.8', key:false, file:'bloxstrike.lua'},
   {id:'sniper',name:'Sniper Arena',      ver:'1.03', key:true,  file:'sniperarena.lua'},
   {id:'run',   name:'Runaways Auto Farm',ver:'v1',   key:true,  file:'runaways_autofarm.lua'},
-  {id:'vd',    name:'Violence District', ver:'Soon', soon:true}
+  {id:'vd',    name:'Violence District', ver:'V2',   key:false, file:'scripts/VD.luau'}
 ];
 var LIVE=SCRIPTS.filter(function(s){return!s.soon}).length;
-function ls(s,pl){return'loadstring(game:HttpGet("'+HOST+'/'+s.file+'"))()'}
+function buildLoadstring(s,pl){return'loadstring(game:HttpGet("'+HOST+'/'+s.file+'"))()'}
 
 var $=function(id){return document.getElementById(id)};
 var $$=function(sel,root){return Array.prototype.slice.call((root||document).querySelectorAll(sel))};
@@ -775,10 +847,10 @@ function toast(msg){
 
 /* ── copy ──────────────────────────────────────── */
 function doCopy(text,btn,msg){
-  var fb=function(){try{var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');ta.remove();return ok}catch(e){return false}};
+  var fallbackCopy=function(){try{var ta=document.createElement('textarea');ta.value=text;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.select();var ok=document.execCommand('copy');ta.remove();return ok}catch(e){return false}};
   var p=navigator.clipboard&&navigator.clipboard.writeText
-    ?navigator.clipboard.writeText(text).then(function(){return true},fb)
-    :Promise.resolve(fb());
+    ?navigator.clipboard.writeText(text).then(function(){return true},fallbackCopy)
+    :Promise.resolve(fallbackCopy());
   p.then(function(ok){
     if(!ok){toast('Select the text manually to copy');return}
     if(btn){
@@ -798,7 +870,7 @@ var THEMES=['dark','light','halloween'];
 function getTheme(){return root.getAttribute('data-theme')||'dark'}
 function applyTheme(t){
   root.setAttribute('data-theme',t);
-  if(mc)mc.content=t==='halloween'?'#0d0400':t==='dark'?'#000':'#fff';
+  if(mc)mc.content=t==='halloween'?'#0a0612':t==='dark'?'#000':'#fff';
   thBtn.setAttribute('aria-label',t==='halloween'?'Exit Halloween mode':t==='dark'?'Switch to light':'Switch to dark');
   try{localStorage.setItem('pw-theme',t)}catch(e){}
 }
@@ -817,34 +889,127 @@ thBtn.addEventListener('click',function(){
 var pBtn=$('pumpkinBtn');
 var hwActive=false;
 var hwInterval=null;
+var hwCount=0;
+var HW_EMOJIS=['🎃','👻','🕷️','🕸️','💀','🦇','🌙','⭐','🍬','🍭','🧙','🔮','🪦','🧛','🍂','🕯️'];
+var HW_MAX=cmq.matches?60:110;
 function spawnHwParticle(){
-  var emojis=['🎃','👻','🕷','🕸','💀','🦇','🌙','⭐'];
+  if(!hwActive||document.hidden||hwCount>=HW_MAX)return;
   var el=document.createElement('div');
   el.className='hw-particle';
-  el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
-  el.style.left=Math.random()*100+'vw';
-  var dur=(3+Math.random()*4).toFixed(2)+'s';
-  var dx=((Math.random()-.5)*60).toFixed(1)+'px';
-  var dr=((Math.random()-.5)*360).toFixed(1)+'deg';
-  el.style.setProperty('--dx',dx);el.style.setProperty('--dr',dr);
-  el.style.animationDuration=dur;
+  el.textContent=HW_EMOJIS[Math.floor(Math.random()*HW_EMOJIS.length)];
+  el.style.left=(Math.random()*100).toFixed(2)+'vw';
+  el.style.fontSize=(1+Math.random()*1.4).toFixed(2)+'rem';
+  el.style.animationDuration=(4+Math.random()*5).toFixed(2)+'s';
+  el.style.setProperty('--dx',((Math.random()-.5)*140).toFixed(1)+'px');
+  el.style.setProperty('--dr',((Math.random()-.5)*540).toFixed(1)+'deg');
+  hwCount++;
   document.body.appendChild(el);
-  el.addEventListener('animationend',function(){el.remove()});
+  el.addEventListener('animationend',function(){el.remove();hwCount=Math.max(0,hwCount-1)});
 }
 function startHw(){
   hwActive=true;applyTheme('halloween');
-  for(var i=0;i<12;i++)setTimeout(spawnHwParticle,i*120);
-  hwInterval=setInterval(spawnHwParticle,800);
+  for(var i=0;i<40;i++)setTimeout(spawnHwParticle,i*90);
+  hwInterval=setInterval(spawnHwParticle,rmq.matches?600:cmq.matches?220:130);
 }
 function stopHw(){
   hwActive=false;clearInterval(hwInterval);hwInterval=null;
+  $$('.hw-particle').forEach(function(n){n.remove()});
+  hwCount=0;
   applyTheme('dark');
 }
 pBtn.addEventListener('click',function(){
   if(hwActive)stopHw();else startHw();
 });
-// If user manually switches theme while halloween, stop hw
 thBtn.addEventListener('click',function(){if(hwActive)stopHw()},{passive:true});
+
+var MUSIC_BASE='https://raw.githubusercontent.com/VoxlarWIP/o/main/';
+var TRACKS=[
+  {title:'A Lovesick Bossa',artist:'jomm',file:'jomm - A Lovesick Bossa [6OKD0w0D1X7J84JfDyGETf].m4a'},
+  {title:'VYNNAS',artist:'gabriawll',file:'gabriawll - VYNNAS [5QQWl86y9o5duJJFzWtlyY].m4a'},
+  {title:'RUN IT UP!',artist:'Pingmas',file:'Pingmas - RUN IT UP! [2zDEHUIZJfOHbwdqCTfdHc].m4a'},
+  {title:'Harvey',artist:"Her's",file:"Her's - Harvey [1zFbBrZmJr1Z49HYe84dBg].m4a"},
+  {title:'Waiting For You (Bonus Track)',artist:'Alex G',file:'Alex G - Waiting For You - Bonus Track [7vY9J1XLDYzI8HXjE8FuFL].m4a'},
+  {title:'Waiting for You',artist:'Dan Mason',file:'Dan Mason ダン·メイソン - Waiting for You [44K1lRG5aUFLQkIKWYbjzQ].m4a'},
+  {title:'22 Grand',artist:'DigBar',file:'DigBar - 22 Grand [5EsOdfmX9H3q08xhTdXOGF].m4a'}
+];
+var mpEl=$('mp'),mpPlayBtn=$('mpPlay'),mpNextBtn=$('mpNext'),mpTitleEl=$('mpTitle');
+var audio=new Audio();
+audio.preload='none';
+var trackIndex=-1,failCount=0,musicWanted=true;
+try{musicWanted=localStorage.getItem('pw-music')!=='off'}catch(e){}
+function saveMusicPref(v){try{localStorage.setItem('pw-music',v)}catch(e){}}
+function pickRandomTrack(){
+  if(TRACKS.length<2)return 0;
+  var i;
+  do{i=Math.floor(Math.random()*TRACKS.length)}while(i===trackIndex);
+  return i;
+}
+function loadTrack(i){
+  trackIndex=i;
+  var t=TRACKS[i];
+  var label=t.title+' \u2014 '+t.artist;
+  audio.src=MUSIC_BASE+encodeURIComponent(t.file);
+  mpTitleEl.textContent=label;
+  mpTitleEl.title=label;
+  if('mediaSession' in navigator&&window.MediaMetadata){
+    navigator.mediaSession.metadata=new MediaMetadata({title:t.title,artist:t.artist,album:'PerplexWare'});
+  }
+}
+function updatePlayUi(){
+  var playing=!audio.paused&&!audio.ended;
+  mpEl.classList.toggle('on',playing);
+  mpPlayBtn.dataset.state=playing?'pause':'play';
+  mpPlayBtn.setAttribute('aria-label',playing?'Pause':'Play');
+}
+function startPlayback(){
+  if(trackIndex<0)loadTrack(pickRandomTrack());
+  var p=audio.play();
+  if(p&&p.catch)p.catch(updatePlayUi);
+  updatePlayUi();
+}
+function playNextRandom(){
+  loadTrack(pickRandomTrack());
+  startPlayback();
+}
+audio.addEventListener('ended',function(){failCount=0;playNextRandom()});
+audio.addEventListener('playing',function(){failCount=0;updatePlayUi()});
+audio.addEventListener('pause',updatePlayUi);
+audio.addEventListener('error',function(){
+  failCount++;
+  if(failCount>=TRACKS.length){mpTitleEl.textContent='Music unavailable';updatePlayUi();return}
+  playNextRandom();
+});
+mpPlayBtn.addEventListener('click',function(){
+  if(audio.paused){musicWanted=true;saveMusicPref('on');startPlayback()}
+  else{musicWanted=false;saveMusicPref('off');audio.pause()}
+});
+mpNextBtn.addEventListener('click',function(){
+  musicWanted=true;saveMusicPref('on');playNextRandom();
+});
+if('mediaSession' in navigator){
+  try{
+    navigator.mediaSession.setActionHandler('nexttrack',playNextRandom);
+    navigator.mediaSession.setActionHandler('play',startPlayback);
+    navigator.mediaSession.setActionHandler('pause',function(){audio.pause()});
+  }catch(e){}
+}
+function armGestureStart(){
+  var go=function(e){
+    if(e.target&&e.target.closest&&e.target.closest('#mp'))return;
+    document.removeEventListener('pointerdown',go,true);
+    document.removeEventListener('keydown',go,true);
+    if(musicWanted&&audio.paused)startPlayback();
+  };
+  document.addEventListener('pointerdown',go,true);
+  document.addEventListener('keydown',go,true);
+}
+loadTrack(pickRandomTrack());
+if(musicWanted){
+  var autoPlay=audio.play();
+  if(autoPlay&&autoPlay.then){
+    autoPlay.then(updatePlayUi).catch(function(){updatePlayUi();armGestureStart()});
+  }else armGestureStart();
+}
 
 /* ── router ────────────────────────────────────── */
 var PAGES=['home','scripts','credits','discord'];
@@ -914,7 +1079,7 @@ rowsEl.innerHTML=SCRIPTS.map(function(s){
 function byId(id){return SCRIPTS.filter(function(s){return s.id===id})[0]}
 rowsEl.addEventListener('click',function(e){
   var cp=e.target.closest('[data-cp]');
-  if(cp){var s=byId(cp.dataset.cp);if(s)doCopy(ls(s,pl),cp);return}
+  if(cp){var s=byId(cp.dataset.cp);if(s)doCopy(buildLoadstring(s,pl),cp);return}
   var op=e.target.closest('[data-open]');
   if(op)openSheet(op.dataset.open,op);
 });
@@ -931,7 +1096,7 @@ var scrim=$('scrim'),sheet=$('sheet'),shCode=$('shCode'),shTitle=$('shTitle'),sh
 function moveSeg(){var a=seg.querySelector('[aria-selected="true"]');if(!a)return;segInd.style.width=a.offsetWidth+'px';segInd.style.transform='translateX('+a.offsetLeft+'px)'}
 function renderCode(anim){
   if(!shScript)return;
-  shCode.textContent=ls(shScript,pl);
+  shCode.textContent=buildLoadstring(shScript,pl);
   if(anim&&!rmq.matches)shCode.animate([{opacity:0,translate:'0 3px'},{opacity:1,translate:'0 0'}],{duration:180,easing:'cubic-bezier(.23,1,.32,1)'});
 }
 function openSheet(id,trigger){
@@ -961,7 +1126,7 @@ seg.addEventListener('click',function(e){
   pl=b.dataset.pl;$$('[role="tab"]',seg).forEach(function(t){t.setAttribute('aria-selected',t===b?'true':'false')});
   moveSeg();renderCode(true);
 });
-shCp.addEventListener('click',function(){doCopy(ls(shScript,pl),shCp)});
+shCp.addEventListener('click',function(){doCopy(buildLoadstring(shScript,pl),shCp)});
 
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape')closeSheet();
