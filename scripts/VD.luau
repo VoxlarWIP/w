@@ -1,3 +1,5 @@
+loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/PerplexWare_Keysystem.lua"))()
+
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
