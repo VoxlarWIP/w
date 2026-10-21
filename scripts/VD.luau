@@ -1,7 +1,3 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/PerplexWare_Keysystem.lua"))()
-
-loadstring(game:HttpGet("https://pastefy.app/9jxnhnM3/raw"))()
-
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
@@ -350,6 +346,9 @@ do
 		srvID = "0",
 		plaS = "Huh?",
 	}
+
+	local function getHWID()
+		local str3
 		pcall(function()
 			if gethwid then
 				str3 = gethwid()
@@ -361,7 +360,7 @@ do
 		return str3
 	end
 
-	local v2 = refreshMapData()
+	local v2 = getHWID()
 	str2 = ""
 
 	pcall(function()
@@ -933,8 +932,9 @@ do
 	end
 end
 
-if tbl.CoreGui:FindFirstChild("WM") then
-	tbl.CoreGui:FindFirstChild("WM"):Destroy()
+local wm = tbl.CoreGui:FindFirstChild("WM")
+if wm then
+	wm:Destroy()
 end
 
 tbl6.WatermarkUI = Instance.new("ScreenGui")
@@ -1114,8 +1114,9 @@ textLabel3.TextColor3 = Color3.fromRGB(255, 255, 255)
 textLabel3.TextSize = 12
 textLabel3.Parent = frame2
 
-if tbl.CoreGui:FindFirstChild("FovC") then
-	tbl.CoreGui:FindFirstChild("FovC"):Destroy()
+local fov = tbl.CoreGui:FindFirstChild("FovC")
+if fov then
+	fov:Destroy()
 end
 
 local frame3
@@ -1397,7 +1398,10 @@ do
 
 						if vaultTrigger then
 							pcall(function()
-								window:FindFirstChild("VaultEvent"):FireServer(vaultTrigger, true)
+								local event = window:FindFirstChild("VaultEvent")
+								if event and event:IsA("RemoteEvent") then
+									event:FireServer(vaultTrigger, true)
+								end
 							end)
 						end
 					else
@@ -1405,7 +1409,10 @@ do
 
 						if vaultPointInUse then
 							pcall(function()
-								window:FindFirstChild("VaultCompleteEvent"):FireServer(vaultPointInUse, false)
+								local event = window:FindFirstChild("VaultCompleteEvent")
+								if event and event:IsA("RemoteEvent") then
+									event:FireServer(vaultPointInUse, false)
+								end
 							end)
 						end
 					end
@@ -1421,7 +1428,10 @@ do
 
 						if palletPointSlide then
 							pcall(function()
-								pallet:FindFirstChild("PalletSlideEvent"):FireServer(palletPointSlide, true)
+								local event = pallet:FindFirstChild("PalletSlideEvent")
+								if event and event:IsA("RemoteEvent") then
+									event:FireServer(palletPointSlide, true)
+								end
 							end)
 						end
 					else
@@ -1429,7 +1439,10 @@ do
 
 						if palletPointSlideInUse then
 							pcall(function()
-								pallet:FindFirstChild("PalletSlideCompleteEvent"):FireServer(palletPointSlideInUse)
+								local event = pallet:FindFirstChild("PalletSlideCompleteEvent")
+								if event and event:IsA("RemoteEvent") then
+									event:FireServer(palletPointSlideInUse)
+								end
 							end)
 						end
 					end
@@ -1477,7 +1490,12 @@ do
 
 	setupSkillCheckSync = function()
 		task.spawn(function()
-			local skillCheckPromptGui = tbl.LocalPlayer:FindFirstChild("PlayerGui"):WaitForChild("SkillCheckPromptGui", 10)
+			local playerGui = tbl.LocalPlayer:WaitForChild("PlayerGui", 10)
+			if not playerGui then
+				return
+			end
+
+			local skillCheckPromptGui = playerGui:WaitForChild("SkillCheckPromptGui", 10)
 			if not skillCheckPromptGui then
 				return
 			end
@@ -4309,7 +4327,7 @@ do
 		end
 	end
 
-	getgenv().VindUI = loadstring(game:HttpGet("https://raw.gitusercontent.com/Skinny-yz/VVind-UI/refs/heads/main/src.lua"))()
+	getgenv().VindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skinny-yz/VVind-UI/refs/heads/main/src.lua"))()
 	getgenv().Library = getgenv().VindUI
 	getgenv().Toggles = {}
 	getgenv().Options = {}
@@ -4827,7 +4845,15 @@ do
 			Callback = function(survInstantGate)
 				tbl3.Surv_InstantGate = survInstantGate
 				task.spawn(function()
-					local ok, result = pcall(function() return require(tbl.ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Items"):WaitForChild("GateClient")) end)
+					local ok, result = pcall(function()
+						local modules = tbl.ReplicatedStorage:WaitForChild("Modules", 5)
+						local items = modules and modules:WaitForChild("Items", 5)
+						local gateClient = items and items:WaitForChild("GateClient", 5)
+						if not (gateClient and gateClient:IsA("ModuleScript")) then
+							return nil
+						end
+						return require(gateClient)
+					end)
 					if not ok or not result then if survInstantGate then sendNotif("Failed!", 3) end return end
 					local tbl18 = {}
 					if survInstantGate then
@@ -5025,10 +5051,34 @@ do
 				if (sk and sk.Value or tbl.LocalPlayer:GetAttribute("SelectedKiller")) ~= "Masked" then
 					sendNotif("Access Denied: Killer is not Masked!", 3) return
 				end
+				local function getMaskedRemote(name)
+					local node = game:GetService("ReplicatedStorage")
+					for _, childName in ipairs({ "Remotes", "Killers", "Masked", name }) do
+						node = node:WaitForChild(childName, 5)
+						if not node then
+							return nil
+						end
+					end
+					return node:IsA("RemoteEvent") and node or nil
+				end
+
 				pcall(function()
-					game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Killers"):WaitForChild("Masked"):WaitForChild("Activatepower"):FireServer(arg)
+					local activate = getMaskedRemote("Activatepower")
+					if not activate then
+						sendNotif("Masked remote not found!", 3)
+						return
+					end
+					activate:FireServer(arg)
 					sendNotif("Mask changed to " .. arg, 2)
-					task.spawn(function() task.wait(60) pcall(function() game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("Killers"):WaitForChild("Masked"):WaitForChild("Deactivatepower"):FireServer() end) end)
+					task.spawn(function()
+						task.wait(60)
+						pcall(function()
+							local deactivate = getMaskedRemote("Deactivatepower")
+							if deactivate then
+								deactivate:FireServer()
+							end
+						end)
+					end)
 				end)
 			end,
 		})
@@ -5916,7 +5966,8 @@ do
 	local function setupParryResultHandler()
 		task.spawn(function()
 			local remotes2 = game:GetService("ReplicatedStorage"):WaitForChild("Remotes", 5)
-			remotes2 = remotes2 and remotes2:WaitForChild("Items", 5):WaitForChild("Parrying Dagger", 5)
+			remotes2 = remotes2 and remotes2:WaitForChild("Items", 5)
+			remotes2 = remotes2 and remotes2:WaitForChild("Parrying Dagger", 5)
 			remotes2 = remotes2 and remotes2:WaitForChild("parryResult", 5)
 
 			if remotes2 then
@@ -7331,7 +7382,13 @@ end)
 
 task.spawn(function()
 	local ok, result = pcall(function()
-		return require(tbl.ReplicatedStorage:WaitForChild("Modules"):WaitForChild("Survivors"):WaitForChild("SurvivorAnimationsController"))
+		local modules = tbl.ReplicatedStorage:WaitForChild("Modules", 5)
+		local survivors = modules and modules:WaitForChild("Survivors", 5)
+		local controller = survivors and survivors:WaitForChild("SurvivorAnimationsController", 5)
+		if not (controller and controller:IsA("ModuleScript")) then
+			return nil
+		end
+		return require(controller)
 	end)
 
 	if not ok or not result then
