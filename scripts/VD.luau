@@ -1,7 +1,3 @@
-loadstring(game:HttpGet("https://raw.githubusercontent.com/VoxlarWIP/p/refs/heads/main/PerplexWare_Keysystem.lua"))()
-
-loadstring(game:HttpGet("https://pastefy.app/9jxnhnM3/raw"))()
-
 if not game:IsLoaded() then
 	game.Loaded:Wait()
 end
@@ -50,10 +46,10 @@ do
 	userThumbnailAsync = tbl.Players:GetUserThumbnailAsync(tbl.LocalPlayer.UserId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size420x420)
 
 	tbl2 = {
-		icon = "",
-		name = "PerplexWare",
-		version = "V2.5 (เห้ยๆอย่ามา skid ของกู)",
-		dc = "https://dsc.gg/PerplexWarehub/",
+		icon = "121088593459735",
+		name = "PerplexWare ",
+		version = "V2.6 (ไอ้ควายกุขี้เกรียจทำเว้ย)",
+		dc = "https://dsc.gg/PerplexWare/",
 		tt = "ไม่มี (None)",
 	}
 
@@ -343,16 +339,13 @@ do
 	humanoid = nil
 
 	tbl10 = {
-		WEB = "Built by https://perplexware.vercel.app",
-		SCRIPT = "https://perplexware.vercel.app",
+		WEB = "Built by https://PerplexWare.vercel.app",
+		SCRIPT = "https://PerplexWare.vercel.app",
 		keyFile = "VD_KeySave.txt",
-		cache = "PerplexWareHub/Log/KeyCache.json",
+		cache = "PerplexWare/Log/KeyCache.json",
 		srvID = "0",
 		plaS = "Huh?",
 	}
-	local function refreshMapData()
-		local str3 = "Unknown"
-
 		pcall(function()
 			if gethwid then
 				str3 = gethwid()
@@ -437,7 +430,7 @@ do
 	sendNotif = function(arg, arg2, arg3)
 		pcall(function()
 			if getgenv().VindUI then
-				getgenv().VindUI:Notify({ Title = "PerplexWare", Text = tostring(arg), Type = "info", Duration = arg2 or 3 })
+				getgenv().VindUI:Notify({ Title = "PerplexWare ", Text = tostring(arg), Type = "info", Duration = arg2 or 3 })
 			end
 		end)
 	end
@@ -979,7 +972,7 @@ do
 	textLabel.TextSize = 11
 	textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 	textLabel.TextTransparency = 0.05
-	textLabel.Text = "PerplexWare | FPS: ... | Ping: ..."
+	textLabel.Text = "PerplexWare  | FPS: ... | Ping: ..."
 	textLabel.Parent = frame
 end
 
@@ -2038,7 +2031,7 @@ do
 		end
 
 		if not getrawmetatable or not setreadonly then
-			warn("[Anti-Fail]: Executor tidak support getrawmetatable atau setreadonly.")
+			warn("[Anti-Fail]: Executor not support.")
 			return
 		end
 		local v3 = getrawmetatable(game)
@@ -3382,7 +3375,12 @@ renderAllESP = function()
 				if hideSpearTrajectory(generator2.part.Position) <= espMaxDistance then
 					local n = math.floor(model:GetAttribute("RepairProgress") or 0)
 					local attribute = model:GetAttribute("PlayersRepairingCount") or 0
-					local generatorDone = n >= 100 and tbl7.Colors.GeneratorDone or tbl7.Colors.Generator
+					local ratio = math.clamp(n / 100, 0, 1)
+					local generatorDone = Color3.fromRGB(
+						math.floor(255 * (1 - ratio)),
+						math.floor(200 + 55 * ratio),
+						0
+					)
 					local geh = model:FindFirstChild("GEH")
 
 					if not geh then
@@ -3407,6 +3405,7 @@ renderAllESP = function()
 
 					if tbl3.ESP_NameG then
 						createBillboardESP(model, "GE_Text", {
+							color = generatorDone,
 							name = "G " .. k,
 							subtext = attribute > 0 and string.format("[%d%%] (%d plyr)", n, attribute) or string.format("[%d%%]", n),
 							color = generatorDone,
@@ -4306,7 +4305,7 @@ do
 		end
 	end
 
-	getgenv().VindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Skinny-yz/VVind-UI/refs/heads/main/src.lua"))()
+	getgenv().VindUI = loadstring(game:HttpGet("https://raw.gitusercontent.com/Skinny-yz/VVind-UI/refs/heads/main/src.lua"))()
 	getgenv().Library = getgenv().VindUI
 	getgenv().Toggles = {}
 	getgenv().Options = {}
@@ -4315,7 +4314,7 @@ do
 		pcall(function()
 			if getgenv().VindUI then
 				getgenv().VindUI:Notify({
-					Title = "PerplexWare",
+					Title = "PerplexWare ",
 					Text = tostring(arg),
 					Type = "info",
 					Duration = arg2 or 3,
@@ -4325,7 +4324,7 @@ do
 	end
 
 	getgenv().Window = getgenv().VindUI:CreateWindow({
-		Title = "PerplexWare",
+		Title = "PerplexWare ",
 		Subtitle = "By @rainlover.r",
 		Icon = "Lucide:sparkles",
 		Size = UDim2.fromOffset(660, 460),
@@ -4606,15 +4605,20 @@ do
 						if not cache.isKiller then continue end
 						local khrp = cache.hrp
 						if not khrp or not khrp.Parent then continue end
-						if (selfPos - khrp.Position).Magnitude > radius then continue end
+						local predictedPos = getKillerPredictedPos(khrp)
+						if (selfPos - predictedPos).Magnitude > radius then continue end
 						local anim = cache.animator
 						if not anim then continue end
 						for _, track in ipairs(anim:GetPlayingAnimationTracks()) do
-							local name = track.Animation and track.Name or ""
-							if name:lower():match("basic") or name:lower():match("lunge") or name:lower():match("attack") or name:lower():match("swing") then
-								if not tbl6.TrackV2[track] then
-									tbl6.TrackV2[track] = true
-									fireParryInput()
+							if not tbl6.TrackV2[track] then
+								local animId = (track.Animation and track.Animation.AnimationId or ""):match("%d+")
+								if animId and tbl5[animId] then
+									local skillName = tbl5[animId]
+									local ignored = tbl3.Ignored_Skills_List and tbl3.Ignored_Skills_List[skillName]
+									if not ignored then
+										tbl6.TrackV2[track] = true
+										fireParryInput()
+									end
 								end
 							end
 						end
@@ -5178,22 +5182,6 @@ do
 		})
 
 		EspSettST:AddToggle({
-			Text = "Highest Generator Highlight",
-			Description = "Highlights the generator with the most repair progress",
-			Icon = "Lucide:cpu",
-			Default = false,
-			Flag = "ESP_HighestGen",
-			Callback = function(v) tbl3.ESP_HighestGen = v end,
-		})
-
-		EspSettST:AddColorPicker({
-			Text = "Highest Gen Color",
-			Default = Color3.fromRGB(100, 255, 100),
-			Flag = "ESP_HighestGenColor",
-			Callback = function(c) tbl7.Colors.GeneratorDone = c end,
-		})
-
-		EspSettST:AddToggle({
 			Text = "Injured Player Color",
 			Description = "Highlights injured survivors in yellow-red based on HP",
 			Icon = "Lucide:heart-pulse",
@@ -5232,8 +5220,7 @@ do
 		EspTargST:AddColorPicker({ Text = "Player Color", Default = tbl7.Colors.Player, Callback = function(c) tbl7.Colors.Player = c end })
 		EspTargST:AddToggle({ Text = "Killer", Default = false, Flag = "ESP_Killer", Callback = function(v) tbl3.ESP_Killer = v if tbl3.ESP_Master then if not v then clearESPByType("Killer") else refreshMapData() end end end })
 		EspTargST:AddColorPicker({ Text = "Killer Color", Default = tbl7.Colors.Killer, Callback = function(c) tbl7.Colors.Killer = c end })
-		EspTargST:AddToggle({ Text = "Generator", Default = false, Flag = "ESP_Generator", Callback = function(v) tbl3.ESP_Generator = v if tbl3.ESP_Master then if not v then clearESPByType("Generator") else refreshMapData() end end end })
-		EspTargST:AddColorPicker({ Text = "Generator Color", Default = tbl7.Colors.Generator, Callback = function(c) tbl7.Colors.Generator = c end })
+		EspTargST:AddToggle({ Text = "Generator", Description = "Progress: yellow (0%) → green (100%)", Default = false, Flag = "ESP_Generator", Callback = function(v) tbl3.ESP_Generator = v if tbl3.ESP_Master then if not v then clearESPByType("Generator") else refreshMapData() end end end })
 
 		EspTargST:AddSection("Objects", "Lucide:box")
 
@@ -5707,7 +5694,7 @@ do
 		InfoTab:AddSection("Script Info", "Lucide:code")
 
 		InfoTab:AddInfoGrid({
-			Title = "PerplexWare",
+			Title = "PerplexWare ",
 			Color = Color3.fromRGB(255, 255, 255),
 			Columns = 2,
 			Items = {
@@ -5733,7 +5720,7 @@ do
 			if ok and result and result.approximate_member_count then
 				InfoTab:AddLabel("Members: " .. result.approximate_member_count)
 			else
-				InfoTab:AddLabel("dsc.gg/PerplexWarehub")
+				InfoTab:AddLabel("dsc.gg/PerplexWare")
 			end
 		end)
 
@@ -5895,7 +5882,7 @@ do
 			end,
 		})
 
-		VindUI:Notify({ Title = "PerplexWare", Text = "Loaded  |  @rainlover.r", Type = "success", Duration = 4, Icon = "Lucide:sparkles" })
+		VindUI:Notify({ Title = "PerplexWare ", Text = "Loaded  |  @rainlover.r", Type = "success", Duration = 4, Icon = "Lucide:sparkles" })
 	end
 
 	flag = true
@@ -7176,7 +7163,7 @@ do
 			tbl6.CurrentPing = n6 / 1000
 
 			if textLabel then
-				textLabel.Text = string.format("PerplexWare | %d FPS | %dms", v4, n6)
+				textLabel.Text = string.format("PerplexWare  | %d FPS | %dms", v4, n6)
 
 				if n6 < 80 then
 					textLabel.TextColor3 = Color3.fromRGB(85, 255, 127)
