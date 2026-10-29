@@ -7,7 +7,7 @@ local Lighting = game:GetService("Lighting")
 
 local Library = {
     Name = "Perplexity",
-    Version = "2.0.0",
+    Version = "3.0.0",
     Author = "@rainlover.r and Claude.AI",
     DefaultIconPack = "Lucide",
     IconSources = {
@@ -70,9 +70,8 @@ local Styles = {
         Id = "Perplexity",
         Display = "Perplexity (Original)",
         Nav = "Sidebar",
-        Layout = "Dashboard",
+        SingleColumn = true,
         RailFraction = 0.18,
-        RightFraction = 0.205,
         RailWidth = 170,
         RailWidthMobile = 100,
         ShowLabels = true,
@@ -94,7 +93,7 @@ local Styles = {
             Success = rgb(52, 211, 120), Warning = rgb(245, 176, 65), Danger = rgb(244, 86, 96),
         },
         Numbers = { TransWindow = 0.1, TransPanel = 0.4, TransCard = 0.5, TransField = 0.35, TransSheen = 0.94, TransStroke = 0.35, TransLine = 1, TransHeader = 0.72, TransRail = 0.8 },
-        Radius = { RadWindow = 16, RadPanel = 12, RadCard = 10, RadControl = 8, RadIcon = 99 },
+        Radius = { RadWindow = 16, RadPanel = 12, RadCard = 10, RadControl = 8, RadIcon = 99, RadPill = 99, RadBlob = 9999 },
     },
     MacLauncher = {
         Id = "MacLauncher",
@@ -119,7 +118,7 @@ local Styles = {
             Success = rgb(48, 209, 88), Warning = rgb(255, 159, 10), Danger = rgb(255, 69, 58),
         },
         Numbers = { TransWindow = 0.16, TransPanel = 0.3, TransCard = 1, TransField = 0.4, TransSheen = 0.92, TransStroke = 0.55, TransLine = 0.82, TransHeader = 0.55, TransRail = 1 },
-        Radius = { RadWindow = 14, RadPanel = 11, RadCard = 8, RadControl = 7, RadIcon = 8 },
+        Radius = { RadWindow = 14, RadPanel = 11, RadCard = 8, RadControl = 7, RadIcon = 8, RadPill = 99, RadBlob = 9999 },
     },
     OperaGX = {
         Id = "OperaGX",
@@ -152,7 +151,7 @@ local Styles = {
             Success = rgb(60, 230, 140), Warning = rgb(255, 176, 50), Danger = rgb(255, 60, 84),
         },
         Numbers = { TransWindow = 0.04, TransPanel = 0.2, TransCard = 0.22, TransField = 0.2, TransSheen = 0.95, TransStroke = 0.15, TransLine = 1, TransHeader = 0.5, TransRail = 0.55 },
-        Radius = { RadWindow = 6, RadPanel = 4, RadCard = 4, RadControl = 3, RadIcon = 99 },
+        Radius = { RadWindow = 0, RadPanel = 0, RadCard = 0, RadControl = 0, RadIcon = 0, RadPill = 0, RadBlob = 0 },
     },
     ClaudeCode = {
         Id = "ClaudeCode",
@@ -179,7 +178,7 @@ local Styles = {
             Success = rgb(126, 200, 120), Warning = rgb(230, 190, 90), Danger = rgb(232, 104, 92),
         },
         Numbers = { TransWindow = 0.02, TransPanel = 0.12, TransCard = 1, TransField = 0.2, TransSheen = 1, TransStroke = 0.45, TransLine = 0.8, TransHeader = 0.8, TransRail = 0.85 },
-        Radius = { RadWindow = 9, RadPanel = 5, RadCard = 4, RadControl = 4, RadIcon = 4 },
+        Radius = { RadWindow = 9, RadPanel = 5, RadCard = 4, RadControl = 4, RadIcon = 4, RadPill = 99, RadBlob = 9999 },
     },
 }
 
@@ -870,6 +869,11 @@ end
 function Window:Make(className, properties, parent, binds)
     properties = properties or {}
     local instance = Instance.new(className)
+    if className == "UIStroke" then
+        pcall(function()
+            instance.LineJoinMode = Enum.LineJoinMode.Miter
+        end)
+    end
     local isText = TEXT_CLASSES[className] == true
     if instance:IsA("GuiObject") then
         instance.BorderSizePixel = 0
@@ -939,7 +943,7 @@ function Window:_createLiquid(container, specs, options)
             Active = false,
             ZIndex = 1,
         }, container)
-        new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, frame)
+        self:Corner(frame, "RadBlob")
         local fill = self:GradientList(frame, { "LiquidA", "LiquidB", "LiquidC", "LiquidA" }, 35)
         fill.Transparency = NumberSequence.new({
             NumberSequenceKeypoint.new(0, spec.Alpha[1]),
@@ -1039,6 +1043,42 @@ local GLASS = {
     Field = { "SurfaceAlt", "TransField", "RadControl" },
 }
 
+local BRACKET_MASK = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(0.07, 0),
+    NumberSequenceKeypoint.new(0.073, 1),
+    NumberSequenceKeypoint.new(0.927, 1),
+    NumberSequenceKeypoint.new(0.93, 0),
+    NumberSequenceKeypoint.new(1, 0),
+})
+
+function Window:_syncGamerParts()
+    local gamer = self.Style.Gamer == true
+    local alive = {}
+    for _, part in ipairs(self._gamerParts) do
+        if part:IsDescendantOf(self.Gui) then
+            part.Enabled = gamer
+            table.insert(alive, part)
+        end
+    end
+    self._gamerParts = alive
+end
+
+function Window:_bracket(frame)
+    if #self._gamerParts >= 128 then
+        self:_syncGamerParts()
+    end
+    local stroke = self:Make("UIStroke", {
+        Name = "Bracket",
+        Thickness = 2,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+        Enabled = self.Style.Gamer == true,
+    }, frame, { Color = "Accent" })
+    new("UIGradient", { Rotation = 45, Transparency = BRACKET_MASK }, stroke)
+    table.insert(self._gamerParts, stroke)
+    return stroke
+end
+
 function Window:GlassEdge(stroke)
     return new("UIGradient", {
         Rotation = 45,
@@ -1068,6 +1108,9 @@ function Window:Glass(parent, kind, properties, className)
         fillEntry = entry
     end
     self:GlassEdge(self:Stroke(frame))
+    if kind == "Panel" then
+        self:_bracket(frame)
+    end
     return frame, fillEntry
 end
 
@@ -2123,7 +2166,7 @@ function Window:_buildGui(options)
         Visible = false,
         ZIndex = 6,
     }, self.BellButton, { BackgroundColor3 = "Danger" })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, self._bellDot)
+    self:Corner(self._bellDot, "RadPill")
     self:_iconButton(actions, 3, "save", "S", function()
         self:FastSave()
     end)
@@ -2393,7 +2436,7 @@ function Window:_buildGui(options)
                 child:Destroy()
             end
         end
-        new("UICorner", { CornerRadius = UDim.new(1, 0) }, menuButton)
+        self:Corner(menuButton, "RadPill")
         local menuLabel = self:Make("TextButton", {
             Size = UDim2.fromScale(1, 1),
             Text = string.upper(string.sub(self.Title, 1, 1)),
@@ -2487,6 +2530,7 @@ function Window:_applyStyleLayout()
     self.BorderStroke.Thickness = style.BorderThickness or 1.5
     self.CornerDecor.Visible = style.Corner == true
     self:_applyLines()
+    self:_syncGamerParts()
     self.Sheen.Visible = style.Numbers.TransSheen < 1
     for _, tab in ipairs(self.AllTabs) do
         tab:_applyNav()
@@ -2570,9 +2614,9 @@ function Window:_playIntro()
         Position = UDim2.new(0.5, 0, 0, 134),
         Size = UDim2.fromOffset(180, 4),
     }, center, { BackgroundColor3 = "SurfaceAlt" })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+    self:Corner(track, "RadPill")
     local fill = self:Make("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1) }, track)
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
+    self:Corner(fill, "RadPill")
     self:Gradient(fill, "Accent", "AccentAlt", 0)
     self:Tween(pop, { Scale = 1 }, 0.5, Enum.EasingStyle.Quint)
     self:Tween(fill, { Size = UDim2.new(1, 0, 1, 0) }, 1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.InOut)
@@ -2823,8 +2867,8 @@ function Tab:_applyNav()
         button.BackgroundTransparency = 0.3
         self.FillEntry[2] = "Accent"
         self.FillEntry[3] = "AccentAlt"
-        self.FillCorner.CornerRadius = UDim.new(1, 0)
-        self.ButtonCorner.CornerRadius = UDim.new(1, 0)
+        self.FillCorner.CornerRadius = window.Tokens.RadPill
+        self.ButtonCorner.CornerRadius = window.Tokens.RadPill
         icon.Visible = true
         icon.AnchorPoint = Vector2.new(0.5, 0.5)
         icon.Position = UDim2.fromScale(0.5, 0.5)
@@ -2903,24 +2947,17 @@ function Tab:_updateLayout()
     local width = pixels / window.Scale.Scale - metrics.ScrollBar - 6
     local hasLeft = #self.Sections.Left > 0 or self.CategoryPanel ~= nil
     local hasRight = #self.Sections.Right > 0
-    local dashboard = style.Layout == "Dashboard"
-    local rightWidth = math.clamp(window.BaseSize.X * (style.RightFraction or 0.205), 140, 220)
-    local minimum = dashboard and (metrics.MinColumn + rightWidth + metrics.Gap) or (metrics.MinColumn * 2 + metrics.Gap)
-    local single = width < minimum or not (hasLeft and hasRight)
+    local minimum = metrics.MinColumn * 2 + metrics.Gap
+    local single = style.SingleColumn == true or width < minimum or not (hasLeft and hasRight)
     if single then
         self.Layout.FillDirection = Enum.FillDirection.Vertical
         self.Left.Size = UDim2.new(1, 0, 0, 0)
         self.Right.Size = UDim2.new(1, 0, 0, 0)
     else
         self.Layout.FillDirection = Enum.FillDirection.Horizontal
-        if dashboard then
-            self.Left.Size = UDim2.new(1, -(rightWidth + metrics.Gap), 0, 0)
-            self.Right.Size = UDim2.new(0, rightWidth, 0, 0)
-        else
-            local half = UDim2.new(0.5, -metrics.Gap / 2, 0, 0)
-            self.Left.Size = half
-            self.Right.Size = half
-        end
+        local half = UDim2.new(0.5, -metrics.Gap / 2, 0, 0)
+        self.Left.Size = half
+        self.Right.Size = half
     end
 end
 
@@ -3400,7 +3437,7 @@ function Window:_rebuildNotifications()
             LayoutOrder = index,
         })
         local bar = self:Make("Frame", { Size = UDim2.new(0, 3, 1, -12), Position = UDim2.fromOffset(6, 6) }, item, { BackgroundColor3 = typeToken })
-        new("UICorner", { CornerRadius = UDim.new(1, 0) }, bar)
+        new("UICorner", { CornerRadius = self.Tokens.RadPill }, bar)
         local body = new("Frame", { Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y }, item)
         addPadding(body, 7, 10, 8, 16)
         addList(body, 1)
@@ -3469,7 +3506,7 @@ local function setRowDisabled(row, disabled)
             ZIndex = 20,
             Visible = false,
         }, row.Frame)
-        new("UICorner", { CornerRadius = UDim.new(0, 8) }, row.Cover)
+        row.Window:Corner(row.Cover, "RadCard")
     end
     row.Cover.Visible = disabled == true
 end
@@ -3487,9 +3524,10 @@ function Window:_ripple(frame, input)
         Size = UDim2.fromOffset(0, 0),
         BackgroundColor3 = Color3.new(1, 1, 1),
         BackgroundTransparency = 0.8,
+        Rotation = self.Style.Gamer and 45 or 0,
         ZIndex = 2,
     }, frame)
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, ring)
+    new("UICorner", { CornerRadius = self.Tokens.RadPill }, ring)
     local diameter = math.max(width, 80) * 1.7
     self:Tween(ring, { Size = UDim2.fromOffset(diameter, diameter), BackgroundTransparency = 1 }, 0.6, Enum.EasingStyle.Quad)
     task.delay(0.65, function()
@@ -3832,17 +3870,17 @@ function Section:AddToggle(options)
         Name = "Switch",
         Size = UDim2.fromOffset(trackWidth, trackHeight),
     }, nil, { BackgroundColor3 = "ToggleOff" })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+    window:Corner(track, "RadPill")
     local trackGlow = window:Make("UIStroke", { Thickness = 2, Transparency = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, track, { Color = "ToggleOn" })
     local fill = window:Make("Frame", { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 }, track, { BackgroundColor3 = "ToggleOn" })
     fill.BackgroundTransparency = 1
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
+    window:Corner(fill, "RadPill")
     local knob = window:Make("Frame", {
         Size = UDim2.fromOffset(knobSize, knobSize),
         AnchorPoint = Vector2.new(0, 0.5),
         Position = UDim2.new(0, 3, 0.5, 0),
     }, track, { BackgroundColor3 = "Knob" })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
+    window:Corner(knob, "RadPill")
     local stateText = window:Make("TextLabel", {
         Name = "State",
         Size = UDim2.fromOffset(0, trackHeight),
@@ -3972,18 +4010,22 @@ function Section:AddSlider(options)
         Position = UDim2.fromOffset(12, trackY),
         Size = UDim2.new(1, -24, 0, metrics.TrackHeight),
     }, row.Frame, { BackgroundColor3 = "ToggleOff" })
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, track)
+    window:Corner(track, "RadPill")
     local fill = new("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = Color3.new(1, 1, 1) }, track)
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, fill)
+    window:Corner(fill, "RadPill")
     window:Gradient(fill, "Accent", "AccentAlt", 0)
     local knob = new("Frame", {
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0, 0.5),
         Size = UDim2.fromOffset(metrics.KnobSize, metrics.KnobSize),
         BackgroundColor3 = Color3.new(1, 1, 1),
+        Rotation = window.Style.Gamer and 45 or 0,
         ZIndex = 2,
     }, track)
-    new("UICorner", { CornerRadius = UDim.new(1, 0) }, knob)
+    window:Corner(knob, "RadPill")
+    window:_onStyle(slider, function()
+        knob.Rotation = window.Style.Gamer and 45 or 0
+    end)
     local knobGlow = window:Make("UIStroke", { Thickness = 3, Transparency = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, knob, { Color = "Accent" })
     local hit = new("TextButton", {
         Position = UDim2.fromOffset(0, metrics.SliderLabel + 4),
@@ -4753,7 +4795,7 @@ function Section:AddCard(options)
                 AutomaticSize = Enum.AutomaticSize.X,
                 LayoutOrder = index,
             })
-            new("UICorner", { CornerRadius = UDim.new(1, 0) }, pill)
+            window:Corner(pill, "RadPill")
             addPadding(pill, 0, 8, 0, 8)
             window:Make("TextLabel", {
                 Size = UDim2.fromOffset(0, 18),
@@ -5101,7 +5143,7 @@ function Window:_createColor(row, options)
             LayoutOrder = order,
             BackgroundColor3 = Color3.new(1, 1, 1),
         }, popup)
-        new("UICorner", { CornerRadius = UDim.new(1, 0) }, bar)
+        self:Corner(bar, "RadPill")
         local gradient = new("UIGradient", {}, bar)
         local marker = new("Frame", {
             AnchorPoint = Vector2.new(0.5, 0.5),
@@ -5110,7 +5152,7 @@ function Window:_createColor(row, options)
             BackgroundColor3 = Color3.new(1, 1, 1),
             ZIndex = 3,
         }, bar)
-        new("UICorner", { CornerRadius = UDim.new(1, 0) }, marker)
+        self:Corner(marker, "RadPill")
         new("UIStroke", { Color = Color3.new(0, 0, 0), Thickness = 1, Transparency = 0.3 }, marker)
         local hit = new("TextButton", {
             AnchorPoint = Vector2.new(0, 0.5),
@@ -6581,6 +6623,7 @@ function Window:_buildAbout(options)
     styles:AddButtonRow({ buttons[3], buttons[4] })
     local log = tab:AddSection({ Title = "Changelog", Icon = "file-text", Side = "Right" })
     log:AddChangelog({
+        { Version = "v3.0.0", Text = "Perplexity Style now have 1 column\nUpgrade OperaGX Style Look\nNew Hook\n "
         { Version = "v2.0.0", Text = "Perplexity: 4 styles, icons, images, terminal", Date = "10/17/2026" },
         { Version = "v1.1.0", Text = "Search, dialogs, resize", Date = "10/16/2026" },
         { Version = "v1.0.0", Text = "UI source and example", Date = "10/15/2026" },
@@ -6667,6 +6710,7 @@ function Library:CreateWindow(options)
         _drags = {},
         _liquids = {},
         _lines = {},
+        _gamerParts = {},
         _liquidClock = 0,
         _claimed = setmetatable({}, { __mode = "k" }),
         _tweens = setmetatable({}, { __mode = "k" }),
