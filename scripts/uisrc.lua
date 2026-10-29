@@ -6623,7 +6623,7 @@ function Window:_buildAbout(options)
     styles:AddButtonRow({ buttons[3], buttons[4] })
     local log = tab:AddSection({ Title = "Changelog", Icon = "file-text", Side = "Right" })
     log:AddChangelog({
-        { Version = "v3.0.0", Text = "Perplexity Style now have 1 column\nUpgrade OperaGX Style Look\nNew Hook\n "
+        { Version = "v3.0.0", Text = "Perplexity Style now have 1 column\nUpgrade OperaGX Style Look\nNew Hook\n ", Date = "10/29/2026" },
         { Version = "v2.0.0", Text = "Perplexity: 4 styles, icons, images, terminal", Date = "10/17/2026" },
         { Version = "v1.1.0", Text = "Search, dialogs, resize", Date = "10/16/2026" },
         { Version = "v1.0.0", Text = "UI source and example", Date = "10/15/2026" },
