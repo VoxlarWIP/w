@@ -404,13 +404,13 @@ local DesktopMetrics = {
 }
 
 local MobileMetrics = {
-    Touch = true, Size = Vector2.new(540, 300), Top = 38, Pad = 8, PanelPad = 10, Gap = 8, Row = 44, RowTall = 56,
-    Text = 13, Small = 11, TabHeight = 42, IconSize = 18, Bubble = 34, ControlHeight = 32,
-    CategoryHeight = 36, CardHeight = 108,
-    ToggleWidth = 46, ToggleHeight = 26, DropdownWidth = 136, InputWidth = 150, SliderHeight = 58,
-    SliderLabel = 24, TrackHeight = 8, KnobSize = 22, ItemHeight = 40, MaxDropdownItems = 6, ScrollBar = 3,
-    BarHeight = 20, SwatchWidth = 38, SwatchHeight = 24, ButtonHeight = 38, MinColumn = 240, PopupWidth = 210,
-    DockIcon = 44, DockHeight = 60, Traffic = 12,
+    Touch = true, Size = Vector2.new(540, 300), Top = 36, Pad = 7, PanelPad = 9, Gap = 7, Row = 36, RowTall = 44,
+    Text = 13, Small = 11, TabHeight = 34, IconSize = 16, Bubble = 28, ControlHeight = 27,
+    CategoryHeight = 30, CardHeight = 100,
+    ToggleWidth = 38, ToggleHeight = 22, DropdownWidth = 124, InputWidth = 136, SliderHeight = 50,
+    SliderLabel = 20, TrackHeight = 6, KnobSize = 18, ItemHeight = 32, MaxDropdownItems = 6, ScrollBar = 3,
+    BarHeight = 18, SwatchWidth = 34, SwatchHeight = 21, ButtonHeight = 32, MinColumn = 236, PopupWidth = 196,
+    DockIcon = 40, DockHeight = 56, Traffic = 11,
 }
 
 local filesSupported = writefile ~= nil and readfile ~= nil and isfile ~= nil and listfiles ~= nil and makefolder ~= nil and isfolder ~= nil
@@ -1780,6 +1780,7 @@ function Window:_themeTokens()
         tokens["On" .. key] = inkOn(tokens[key])
     end
     tokens.OnAccent = inkOn(tokens.Accent)
+    tokens.TransScrim = bright and 0.9 or 0.84
     tokens.TransCardLift = math.min(tokens.TransCard, 0.5)
     tokens.TransTerminal = tokens.TransPanel * 0.5
     tokens.RimColor = bright and BLACK or WHITE
@@ -2934,7 +2935,8 @@ function Window:_showPopup(popup, anchor, size, sheet)
     self:Tween(blocker, { BackgroundTransparency = 1 }, 0)
     blocker.Visible = true
     if sheet or anchor == nil then
-        self:Motion("Fade", blocker, { BackgroundTransparency = sheet and 0.55 or 0.72 })
+        local scrim = self.Tokens.TransScrim
+        self:Motion("Fade", blocker, { BackgroundTransparency = sheet and scrim or math.min(1, scrim + 0.04) })
     end
     self._popup = popup
     self._popupSheet = sheet
@@ -3220,7 +3222,6 @@ function Window:Dialog(options)
             Text = options.Content,
             TextSize = self.Metrics.Text,
             TextWrapped = true,
-            TextTransparency = 0.12,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Top,
             LayoutOrder = 2,
@@ -3272,7 +3273,7 @@ function Window:Dialog(options)
     end
     local _, created = self:_createButtonRow(card, buttons, 3, nil, true)
     elements = created
-    self:Motion("Dialog", dim, { BackgroundTransparency = 0.7 })
+    self:Motion("Dialog", dim, { BackgroundTransparency = math.max(0, self.Tokens.TransScrim - 0.06) })
     self:Motion("Dialog", card, { GroupTransparency = 0 })
     self:Motion("Dialog", pop, { Scale = 1 })
     self._dialog = handle
@@ -4522,20 +4523,20 @@ function Tab:_applySelected(animate)
         set(self.IconFallback, { TextTransparency = 0 })
     elseif window:_showLabels() then
         local filled = selected and style.Id ~= "ClaudeCode"
-        tone = filled and "OnAccent" or "Text"
+        tone = filled and "OnAccent" or (selected and "Text" or "Muted")
         set(self.Bar, { BackgroundTransparency = selected and 0 or 1, Size = UDim2.new(0, 3, selected and 0.55 or 0.2, 0) })
         set(self.Fill, { BackgroundTransparency = filled and 0 or 1 })
-        set(self.Label, { TextTransparency = selected and 0 or 0.4 })
-        set(self.Icon, { ImageTransparency = selected and 0 or 0.4 })
-        set(self.IconFallback, { TextTransparency = selected and 0 or 0.4 })
+        set(self.Label, { TextTransparency = 0 })
+        set(self.Icon, { ImageTransparency = 0 })
+        set(self.IconFallback, { TextTransparency = 0 })
         set(self.Glow, { Transparency = 1 })
         set(self.Dot, { BackgroundTransparency = 1 })
     else
-        tone = selected and "OnAccent" or "Text"
+        tone = selected and "OnAccent" or "Muted"
         set(self.Bar, { BackgroundTransparency = selected and 0 or 1, Size = UDim2.new(0, 3, selected and 0.5 or 0.2, 0) })
         set(self.Fill, { BackgroundTransparency = selected and 0 or 1 })
-        set(self.Icon, { ImageTransparency = selected and 0 or 0.35 })
-        set(self.IconFallback, { TextTransparency = selected and 0 or 0.35 })
+        set(self.Icon, { ImageTransparency = 0 })
+        set(self.IconFallback, { TextTransparency = 0 })
         set(self.Glow, { Transparency = (selected and style.Glow) and 0.35 or 1 })
         set(self.Dot, { BackgroundTransparency = 1 })
     end
@@ -4653,7 +4654,7 @@ function Tab:AddCategory(options)
         Text = window:Display(category.Title),
         Font = "Semi",
         TextSize = metrics.Text - 1,
-        TextTransparency = 0.35,
+        Muted = true,
         ZIndex = 2,
     }, pill)
     addPadding(category.Label, 0, 11, 0, 11)
@@ -4697,7 +4698,7 @@ function Tab:_refreshCategories()
                 end
             end
         end
-        local show = count > 0 and (query == "" or matches > 0)
+        local show = not category.Hidden and count > 0 and (query == "" or matches > 0)
         category.Pill.Visible = show
         if show then
             firstVisible = firstVisible or category
@@ -4762,7 +4763,13 @@ function Tab:SelectCategory(category)
         local selected = other == category
         other.Selected = selected
         window:Motion("Tab", other.Fill, { BackgroundTransparency = selected and 0 or 1 })
-        window:Motion("Tab", other.Label, { TextTransparency = selected and 0 or 0.35 })
+        local before = other.Label.TextColor3
+        window:Bind(other.Label, "TextColor3", selected and "OnAccent" or "Muted")
+        local after = other.Label.TextColor3
+        if before ~= after then
+            other.Label.TextColor3 = before
+            window:Motion("Tab", other.Label, { TextColor3 = after })
+        end
     end
     for _, section in ipairs(self.Sections.Left) do
         if section.Category then
@@ -4822,7 +4829,7 @@ function Tab:AddSection(options)
         local collapsible = options.Collapsible ~= false
         local header = window:Make(collapsible and "TextButton" or "Frame", {
             Name = "Header",
-            Size = UDim2.new(1, 0, 0, metrics.Text + 10 + (metrics.Touch and 6 or 0)),
+            Size = UDim2.new(1, 0, 0, metrics.Text + 10 + (metrics.Touch and 2 or 0)),
             LayoutOrder = 1,
         }, section.Frame)
         local textX = 0
@@ -5048,7 +5055,7 @@ function Section:SetCollapsed(collapsed, instant)
 end
 
 function Section:_applyVisibility()
-    local visible = self._searchVisible ~= false
+    local visible = self._searchVisible ~= false and not self.Hidden
     if self.Category and not self.Category.Selected and self.Window.SearchQuery == "" then
         visible = false
     end
@@ -6191,12 +6198,13 @@ function Section:AddDropdown(options)
     addPadding(list, 4)
     addList(list, 2)
     local items = {}
+    local searchBoxHeight = math.max(20, metrics.ItemHeight - 8)
     local searchBox = window:Make("TextBox", {
         Name = "Search",
         Position = UDim2.fromOffset(4, 4),
-        Size = UDim2.new(1, -8, 0, metrics.ItemHeight - 2),
+        Size = UDim2.new(1, -8, 0, searchBoxHeight),
         PlaceholderText = "Search...",
-        TextSize = metrics.Text - 1,
+        TextSize = metrics.Small + 1,
         TextXAlignment = Enum.TextXAlignment.Left,
         Visible = false,
     }, popup, { BackgroundColor3 = "SurfaceAlt", BackgroundTransparency = "TransField", PlaceholderColor3 = "Muted" })
@@ -6390,7 +6398,7 @@ function Section:AddDropdown(options)
             return
         end
         local useSearch = options.Searchable == true or (options.Searchable == nil and #dropdown.Options > 8)
-        local searchHeight = useSearch and (metrics.ItemHeight + 4) or 0
+        local searchHeight = useSearch and (searchBoxHeight + 8) or 0
         searchBox.Visible = useSearch
         searchBox.Text = ""
         emptyLabel.Text = "No options"
@@ -6714,7 +6722,7 @@ function Window:_createButtonRow(parent, buttons, layoutOrder, section, transien
         function element:SetDisabled(disabled)
             self.Disabled = disabled == true
             hit.Active = not self.Disabled and not self.Loading
-            self.Window:Motion("Fade", text, { TextTransparency = self.Disabled and 0.6 or 0 })
+            self.Window:Motion("Fade", text, { TextTransparency = self.Disabled and 0.5 or 0 })
         end
         function element:SetLoading(loading, label)
             loading = loading == true
@@ -6738,7 +6746,7 @@ function Window:_createButtonRow(parent, buttons, layoutOrder, section, transien
                 })
                 self.Window:Motion("Fade", text, { TextTransparency = 0.25 })
             else
-                self.Window:Motion("Fade", text, { TextTransparency = self.Disabled and 0.6 or 0 })
+                self.Window:Motion("Fade", text, { TextTransparency = self.Disabled and 0.5 or 0 })
                 if self._render then
                     self._render()
                 else
@@ -8490,7 +8498,7 @@ function Window:_createColor(row, options)
     self:Stroke(swatch)
     attachControl(row, swatch)
     picker.Button = swatch
-    local pad = 8
+    local pad = metrics.Touch and 7 or 8
     local popupWidth = metrics.PopupWidth
     local popupHeight = pad * 2 + metrics.ControlHeight * 2 + metrics.BarHeight * 3 + pad * 4
     local popup = self:_makePopup("ColorPopup")
@@ -9511,6 +9519,10 @@ function Window:_featureVisible(feature)
     if tab and tab.Hidden then
         return false
     end
+    local section = feature.Section
+    if section and (section.Hidden or (section.Category and section.Category.Hidden)) then
+        return false
+    end
     return true
 end
 
@@ -9605,17 +9617,19 @@ function Window:_paletteResults(raw)
             if not tab.Hidden then
                 consider({ Kind = "Tab", Target = tab, Title = tab.Title, Sub = "Tab", Glyph = PALETTE_GLYPH.Tab }, { { tab.Title, 1 } })
                 for _, category in ipairs(tab.Categories or {}) do
-                    consider({
-                        Kind = "Category",
-                        Target = category,
-                        Title = category.Title,
-                        Sub = tab.Title .. " / Category",
-                        Glyph = PALETTE_GLYPH.Category,
-                    }, { { category.Title, 0.9 }, { tab.Title, 0.3 } })
+                    if not category.Hidden then
+                        consider({
+                            Kind = "Category",
+                            Target = category,
+                            Title = category.Title,
+                            Sub = tab.Title .. " / Category",
+                            Glyph = PALETTE_GLYPH.Category,
+                        }, { { category.Title, 0.9 }, { tab.Title, 0.3 } })
+                    end
                 end
                 for _, side in ipairs({ "Left", "Right" }) do
                     for _, section in ipairs(tab.Sections[side]) do
-                        if section.Title and section.Title ~= "" then
+                        if section.Title and section.Title ~= "" and not section.Hidden and not (section.Category and section.Category.Hidden) then
                             consider({
                                 Kind = "Section",
                                 Target = section,
@@ -11266,6 +11280,8 @@ function Window:_buildSettings()
     local themeCategory = tab:AddCategory({ Title = "Theme" })
     local behaviorCategory = tab:AddCategory({ Title = "Behavior" })
     local configCategory = tab:AddCategory({ Title = "Config" })
+    local advancedCategory = tab:AddCategory({ Title = "Advanced" })
+    self._advancedCategory = advancedCategory
 
     local appearance = themeCategory:AddSection({ Title = "Appearance", Icon = "palette" })
     local displays = {}
@@ -11341,8 +11357,9 @@ function Window:_buildSettings()
         }))
     end
     colorPicker(appearance, "Accent", "Accent Color")
-    colorPicker(appearance, "AccentAlt", "Accent Highlight")
-    self._opacitySlider = appearance:AddSlider(spec({
+    local lab = advancedCategory:AddSection({ Title = "Theme Lab", Icon = "palette" })
+    colorPicker(lab, "AccentAlt", "Accent Highlight")
+    self._opacitySlider = lab:AddSlider(spec({
         Text = "Surface Opacity",
         Description = "Lower is clearer glass",
         Icon = "contrast",
@@ -11357,7 +11374,7 @@ function Window:_buildSettings()
         end,
     }))
     self._opacitySlider:Set(math.floor(self.Theme.Opacity * 100 + 0.5), true)
-    self._adaptiveToggle = appearance:AddToggle(spec({
+    self._adaptiveToggle = lab:AddToggle(spec({
         Text = "Adaptive Lighting",
         Description = "Tune glass and decor for bright themes",
         Icon = "sun",
@@ -11368,7 +11385,7 @@ function Window:_buildSettings()
         end,
     }))
     self._adaptiveToggle:Set(self.Theme.Adaptive, true)
-    appearance:AddButton({
+    lab:AddButton({
         Text = "Reset Theme",
         NoBind = true,
         Internal = true,
@@ -11378,7 +11395,7 @@ function Window:_buildSettings()
         end,
     })
 
-    local effects = themeCategory:AddSection({ Title = "Effects", Icon = "sparkles", Collapsed = true })
+    local effects = advancedCategory:AddSection({ Title = "Effects", Icon = "sparkles", Collapsed = true })
     self._qualityDropdown = effects:AddDropdown(spec({
         Text = "Effect Quality",
         Description = "Lower is lighter on weak devices",
@@ -11428,7 +11445,7 @@ function Window:_buildSettings()
         end,
     }))
 
-    local editor = themeCategory:AddSection({ Title = "Live Theme Editor", Icon = "sliders-horizontal", Collapsed = true })
+    local editor = advancedCategory:AddSection({ Title = "Live Theme Editor", Icon = "sliders-horizontal", Collapsed = true })
     for _, entry in ipairs({
         { "Background", "Background" }, { "Surface", "Surface" }, { "SurfaceAlt", "Surface Alt" }, { "Text", "Text" },
         { "Muted", "Muted Text" }, { "Outline", "Outline" }, { "ToggleOn", "Toggle On" }, { "Success", "Success" },
@@ -11447,7 +11464,7 @@ function Window:_buildSettings()
         end,
     })
 
-    local presets = themeCategory:AddSection({ Title = "Presets and Sharing", Icon = "share-2", Collapsed = true })
+    local presets = advancedCategory:AddSection({ Title = "Presets and Sharing", Icon = "share-2", Collapsed = true })
     local presetName = presets:AddTextBox({ Text = "Preset Name", Icon = "tag", Placeholder = "my_theme", Internal = true })
     presets:AddButtonRow({
         {
@@ -11514,7 +11531,54 @@ function Window:_buildSettings()
         },
     })
 
-    local motion = behaviorCategory:AddSection({ Title = "Motion", Icon = "timer" })
+    local general = behaviorCategory:AddSection({ Title = "General", Icon = "sliders-horizontal" })
+    self._scaleSlider = general:AddSlider(spec({
+        Text = "UI Scale",
+        Icon = "scaling",
+        Min = 50,
+        Max = 150,
+        Step = 5,
+        Default = 100,
+        Suffix = "%",
+        Flag = "__UIScale",
+        Callback = function(percent)
+            self:SetScale(percent / 100)
+        end,
+    }))
+    self._scaleSlider:Set(math.floor(self.UserScale * 100 + 0.5), true)
+    self._reduceToggle = general:AddToggle(spec({
+        Text = "Reduce Motion",
+        Description = "Skip transitions and animated decor",
+        Icon = "accessibility",
+        Default = false,
+        Flag = "__Reduce",
+        Callback = function(enabled)
+            self:SetReduceMotion(enabled)
+        end,
+    }))
+    self._reduceToggle:Set(self.MotionState.Reduce, true)
+    general:AddKeybind(spec({
+        Text = "Menu Key",
+        Icon = "keyboard",
+        Default = self.MenuKey,
+        Flag = "__MenuKey",
+        OnChanged = function(key)
+            self.MenuKey = key
+        end,
+    }))
+    self._rememberToggle = general:AddToggle(spec({
+        Text = "Remember Last Tab",
+        Description = "Reopen where you left off",
+        Icon = "history",
+        Default = true,
+        Flag = "__Remember",
+        Callback = function(enabled)
+            self:SetRememberTab(enabled)
+        end,
+    }))
+    self._rememberToggle:Set(self._rememberTab, true)
+
+    local motion = advancedCategory:AddSection({ Title = "Motion", Icon = "timer", Collapsed = true })
     self._speedSlider = motion:AddSlider(spec({
         Text = "Animation Speed",
         Description = "Scales every transition",
@@ -11530,17 +11594,6 @@ function Window:_buildSettings()
         end,
     }))
     self._speedSlider:Set(math.floor(self.MotionState.Speed * 100 + 0.5), true)
-    self._reduceToggle = motion:AddToggle(spec({
-        Text = "Reduce Motion",
-        Description = "Skip transitions and animated decor",
-        Icon = "accessibility",
-        Default = false,
-        Flag = "__Reduce",
-        Callback = function(enabled)
-            self:SetReduceMotion(enabled)
-        end,
-    }))
-    self._reduceToggle:Set(self.MotionState.Reduce, true)
     motion:AddToggle(spec({
         Text = "Intro Animation",
         Icon = "play",
@@ -11561,7 +11614,7 @@ function Window:_buildSettings()
         end,
     })
 
-    local layout = behaviorCategory:AddSection({ Title = "Layout", Icon = "scaling" })
+    local layout = advancedCategory:AddSection({ Title = "Layout", Icon = "scaling", Collapsed = true })
     self._autoScaleToggle = layout:AddToggle(spec({
         Text = "Auto Scale",
         Description = "Scale from the screen size",
@@ -11574,19 +11627,6 @@ function Window:_buildSettings()
         end,
     }))
     self._autoScaleToggle:Set(self.AutoScale, true)
-    self._scaleSlider = layout:AddSlider(spec({
-        Text = "UI Scale",
-        Min = 50,
-        Max = 150,
-        Step = 5,
-        Default = 100,
-        Suffix = "%",
-        Flag = "__UIScale",
-        Callback = function(percent)
-            self:SetScale(percent / 100)
-        end,
-    }))
-    self._scaleSlider:Set(math.floor(self.UserScale * 100 + 0.5), true)
     self._popupModeDropdown = layout:AddDropdown(spec({
         Text = "Popup Style",
         Description = "Sheets on phones, anchored menus on desktop",
@@ -11619,16 +11659,7 @@ function Window:_buildSettings()
         end,
     })
 
-    local input = behaviorCategory:AddSection({ Title = "Input", Icon = "keyboard" })
-    input:AddKeybind(spec({
-        Text = "Menu Key",
-        Icon = "keyboard",
-        Default = self.MenuKey,
-        Flag = "__MenuKey",
-        OnChanged = function(key)
-            self.MenuKey = key
-        end,
-    }))
+    local input = advancedCategory:AddSection({ Title = "Input", Icon = "keyboard", Collapsed = true })
     self._paletteKeybind = input:AddKeybind(spec({
         Text = "Palette Key",
         Description = "Hold Ctrl and press this key",
@@ -11639,19 +11670,8 @@ function Window:_buildSettings()
             self:SetPaletteKey(key)
         end,
     }))
-    self._rememberToggle = input:AddToggle(spec({
-        Text = "Remember Last Tab",
-        Description = "Reopen where you left off",
-        Icon = "history",
-        Default = true,
-        Flag = "__Remember",
-        Callback = function(enabled)
-            self:SetRememberTab(enabled)
-        end,
-    }))
-    self._rememberToggle:Set(self._rememberTab, true)
 
-    local binds = behaviorCategory:AddSection({ Title = "Keybinds", Icon = "keyboard", Collapsed = true })
+    local binds = advancedCategory:AddSection({ Title = "Keybinds", Icon = "keyboard", Collapsed = true })
     binds:AddParagraph({
         Content = "Right-click (or hold) any toggle or button, then press a key. Sliders and dropdowns can not be bound. Escape clears a bind.",
     })
@@ -11676,12 +11696,13 @@ function Window:_buildSettings()
         },
     })
     local config = configCategory:AddSection({ Title = "Configuration", Icon = "save" })
+    local tools = advancedCategory:AddSection({ Title = "Config Tools", Icon = "folder", Collapsed = true })
     local folderPath = "workspace/" .. self.ConfigPath
-    config:AddParagraph({
+    tools:AddParagraph({
         Title = "File location",
         Content = self.CanSave and folderPath or "File system not supported here. Configs stay in memory until the UI is unloaded.",
     })
-    config:AddButton({
+    tools:AddButton({
         Text = "Copy Folder Path",
         NoBind = true,
         Internal = true,
@@ -11837,8 +11858,8 @@ function Window:_buildSettings()
     })
     autoLabel = config:AddLabel({ Text = "", Internal = true })
     refreshAutoLabel()
-    config:AddDivider({ Text = "Share" })
-    config:AddButton({
+    tools:AddDivider({ Text = "Share" })
+    tools:AddButton({
         Text = "Copy Config as JSON",
         NoBind = true,
         Internal = true,
@@ -11853,8 +11874,8 @@ function Window:_buildSettings()
             self.ImportBox:Set(json, true)
         end,
     })
-    self.ImportBox = config:AddTextBox({ Text = "Paste JSON", Icon = "clipboard", Placeholder = "{ ... }", Internal = true })
-    config:AddButton({
+    self.ImportBox = tools:AddTextBox({ Text = "Paste JSON", Icon = "clipboard", Placeholder = "{ ... }", Internal = true })
+    tools:AddButton({
         Text = "Import JSON",
         NoBind = true,
         Internal = true,
@@ -11867,7 +11888,7 @@ function Window:_buildSettings()
             end
         end,
     })
-    local window = configCategory:AddSection({ Title = "Window", Icon = "app-window", Collapsed = true })
+    local window = configCategory:AddSection({ Title = "Window", Icon = "app-window" })
     window:AddButtonRow({
         {
             Text = "Reset Defaults",
@@ -11913,6 +11934,39 @@ function Window:_buildSettings()
             end,
         },
     })
+    self:SetAdvancedSettings(self._advancedSettings)
+end
+
+function Window:SetAdvancedSettings(enabled)
+    enabled = enabled == true
+    self._advancedSettings = enabled
+    local category = self._advancedCategory
+    local tab = self.SettingsTab
+    if not (category and tab) then
+        return false
+    end
+    category.Hidden = not enabled
+    for _, section in ipairs(tab.Sections.Left) do
+        if section.Category == category then
+            section.Hidden = not enabled
+            section:_applyVisibility()
+        end
+    end
+    if not enabled and category.Selected then
+        for _, other in ipairs(tab.Categories) do
+            if other ~= category then
+                tab:SelectCategory(other)
+                break
+            end
+        end
+    end
+    tab:_refreshCategories()
+    self:_queue("Favorites")
+    return true
+end
+
+function Window:GetAdvancedSettings()
+    return self._advancedSettings == true
 end
 
 function Window:ResetToDefaults()
@@ -12096,6 +12150,7 @@ function Library:CreateWindow(options)
         _flashSerials = setmetatable({}, { __mode = "k" }),
         _paletteRows = {},
         PaletteEnabled = options.Palette ~= false,
+        _advancedSettings = options.AdvancedSettings == true,
         PaletteKey = keyFromName(options.PaletteKey) or Enum.KeyCode.K,
         _center = Vector2.new(0.5, 0.5),
         _quietUntil = os.clock() + 2.5,
