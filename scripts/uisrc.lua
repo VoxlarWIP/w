@@ -208,6 +208,7 @@ local COLOR_TOKENS = {
 local MOTION = {
     Hover = { 0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out },
     Press = { 0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out },
+    Release = { 0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out },
     Toggle = { 0.2, Enum.EasingStyle.Quint, Enum.EasingDirection.Out },
     Tab = { 0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out },
     Dialog = { 0.26, Enum.EasingStyle.Quint, Enum.EasingDirection.Out },
@@ -234,6 +235,7 @@ local QUALITY = {
 }
 
 local TONES = { Text = "Text", Muted = "Muted", Success = "Success", Danger = "Danger", Warning = "Warning", Accent = "Accent" }
+local TEXT_TONES = { Text = "Text", Muted = "Muted", Success = "Success", Danger = "Danger", Warning = "Warning", Accent = "AccentText" }
 
 local RIM_MASK = NumberSequence.new({
     NumberSequenceKeypoint.new(0, 0),
@@ -259,8 +261,66 @@ for _, token in ipairs(COLOR_TOKENS) do
     COLOR_TOKEN_SET[token] = true
 end
 
-local function luminance(color)
-    return 0.2126 * color.R + 0.7152 * color.G + 0.0722 * color.B
+local INK_DARK = Color3.fromRGB(22, 25, 38)
+local INK_LIGHT = Color3.fromRGB(244, 245, 252)
+local BLACK = Color3.new(0, 0, 0)
+local WHITE = Color3.new(1, 1, 1)
+
+local function linearChannel(value)
+    if value <= 0.03928 then
+        return value / 12.92
+    end
+    return ((value + 0.055) / 1.055) ^ 2.4
+end
+
+local function relativeLuminance(color)
+    return 0.2126 * linearChannel(color.R) + 0.7152 * linearChannel(color.G) + 0.0722 * linearChannel(color.B)
+end
+
+local function contrastRatio(a, b)
+    local la, lb = relativeLuminance(a), relativeLuminance(b)
+    if la < lb then
+        la, lb = lb, la
+    end
+    return (la + 0.05) / (lb + 0.05)
+end
+
+local function isBrightColor(color)
+    return contrastRatio(INK_DARK, color) > contrastRatio(INK_LIGHT, color)
+end
+
+local function ensureContrast(color, background, minimum)
+    if contrastRatio(color, background) >= minimum then
+        return color
+    end
+    local target = isBrightColor(background) and BLACK or WHITE
+    for step = 1, 14 do
+        local candidate = color:Lerp(target, step / 16)
+        if contrastRatio(candidate, background) >= minimum then
+            return candidate
+        end
+    end
+    return color:Lerp(target, 0.9)
+end
+
+local function inkOn(color)
+    local white = contrastRatio(WHITE, color)
+    return (white >= 3 or white >= contrastRatio(INK_DARK, color)) and WHITE or INK_DARK
+end
+
+local function ensureAgainst(color, surfaces, minimum)
+    for _, surface in ipairs(surfaces) do
+        color = ensureContrast(color, surface, minimum)
+    end
+    return color
+end
+
+local function worstContrast(color, surfaces)
+    local worst = 21
+    for _, surface in ipairs(surfaces) do
+        worst = math.min(worst, contrastRatio(color, surface))
+    end
+    return worst
 end
 
 local function shiftHue(color, amount, saturation, value)
@@ -1154,7 +1214,11 @@ function Window:Make(className, properties, parent, binds)
         instance.Text = ""
         instance.TextSize = self.Metrics.Text
         bindings.FontFace = FONT_TOKENS[properties.Font or "Medium"]
-        bindings.TextColor3 = properties.Color or (properties.Muted and "Muted") or "Text"
+        local textToken = properties.Color
+        if textToken == "Accent" then
+            textToken = "AccentText"
+        end
+        bindings.TextColor3 = textToken or (properties.Muted and "Muted") or "Text"
         if className == "TextBox" then
             instance.ClearTextOnFocus = false
         end
@@ -1608,6 +1672,7 @@ function Window:_themeTokens()
     local tokens = self:_styleTokens(style)
     local theme = self.Theme
     local overrides = theme.Overrides
+    local adaptive = theme.Adaptive ~= false
     if theme.Opacity ~= 1 then
         for _, key in ipairs(OPACITY_TOKENS) do
             local base = tokens[key]
@@ -1621,7 +1686,9 @@ function Window:_themeTokens()
             tokens[token] = color
         end
     end
-    if theme.Adaptive and (overrides.Accent or overrides.AccentAlt or overrides.Background) then
+    local background = tokens.Background
+    local bright = isBrightColor(background)
+    if adaptive and (overrides.Accent or overrides.AccentAlt or overrides.Background) then
         local accent = tokens.Accent
         if overrides.Accent and not overrides.AccentAlt then
             tokens.AccentAlt = shiftHue(accent, 0.07, 1, 0.92)
@@ -1630,8 +1697,6 @@ function Window:_themeTokens()
         if overrides.Accent and not overrides.ToggleOn and style.Colors.ToggleOn == style.Colors.Accent then
             tokens.ToggleOn = accent
         end
-        local background = tokens.Background
-        local bright = luminance(background) > 0.55
         if not overrides.LiquidB then
             tokens.LiquidB = accent
         end
@@ -1642,7 +1707,7 @@ function Window:_themeTokens()
             tokens.LiquidA = background:Lerp(accent, bright and 0.1 or 0.24)
         end
         if not overrides.LiquidSpec then
-            tokens.LiquidSpec = bright and accent:Lerp(Color3.new(0, 0, 0), 0.12) or accent:Lerp(Color3.new(1, 1, 1), 0.55)
+            tokens.LiquidSpec = bright and accent:Lerp(BLACK, 0.12) or accent:Lerp(WHITE, 0.55)
         end
         if overrides.Accent and not overrides.Outline then
             tokens.Outline = tokens.Outline:Lerp(accent, 0.18)
@@ -1651,16 +1716,73 @@ function Window:_themeTokens()
             tokens.Hover = tokens.Hover:Lerp(accent, 0.15)
         end
     end
-    local background = tokens.Background
-    if overrides.Background and not overrides.Text and math.abs(luminance(tokens.Text) - luminance(background)) < 0.35 then
-        local dark = luminance(background) > 0.5
-        tokens.Text = dark and Color3.fromRGB(21, 24, 38) or Color3.fromRGB(240, 241, 250)
-        if not overrides.Muted then
-            tokens.Muted = tokens.Text:Lerp(background, 0.45)
+    if adaptive and bright ~= isBrightColor(style.Colors.Background) then
+        local derived
+        if bright then
+            derived = {
+                Surface = background:Lerp(WHITE, 0.62),
+                SurfaceAlt = background:Lerp(BLACK, 0.05),
+                SurfaceHi = background:Lerp(WHITE, 0.82),
+                Dialog = background:Lerp(WHITE, 0.78),
+                DialogHi = background:Lerp(BLACK, 0.035),
+                Hover = background:Lerp(BLACK, 0.09),
+                Outline = background:Lerp(BLACK, 0.18),
+                ToggleOff = background:Lerp(BLACK, 0.24),
+                Knob = WHITE,
+            }
+        else
+            derived = {
+                Surface = background:Lerp(WHITE, 0.05),
+                SurfaceAlt = background:Lerp(WHITE, 0.1),
+                SurfaceHi = background:Lerp(WHITE, 0.08),
+                Dialog = background:Lerp(WHITE, 0.12),
+                DialogHi = background:Lerp(WHITE, 0.2),
+                Hover = background:Lerp(WHITE, 0.15),
+                Outline = background:Lerp(WHITE, 0.24),
+                ToggleOff = background:Lerp(WHITE, 0.3),
+                Knob = background:Lerp(WHITE, 0.75),
+            }
+        end
+        for token, color in pairs(derived) do
+            if not overrides[token] then
+                tokens[token] = color
+            end
         end
     end
-    local bright = luminance(tokens.Background) > 0.55
-    tokens.RimColor = bright and Color3.new(0, 0, 0) or Color3.new(1, 1, 1)
+    local surfaces = { tokens.Background, tokens.Surface, tokens.SurfaceHi, tokens.SurfaceAlt, tokens.Dialog }
+    local textChanged = false
+    if overrides.Text then
+        if worstContrast(overrides.Text, { tokens.Background, tokens.Surface }) < 2.2 then
+            tokens.Text = ensureContrast(overrides.Text, background, 4.5)
+            textChanged = true
+        end
+    elseif worstContrast(tokens.Text, surfaces) < 4.5 then
+        local matching = bright and background:Lerp(BLACK, 0.88) or background:Lerp(WHITE, 0.92)
+        local opposite = bright and background:Lerp(WHITE, 0.92) or background:Lerp(BLACK, 0.88)
+        tokens.Text = worstContrast(opposite, surfaces) > worstContrast(matching, surfaces) and opposite or matching
+        textChanged = true
+    end
+    if not overrides.Muted then
+        if textChanged or worstContrast(tokens.Muted, { tokens.Background, tokens.Surface }) < 3.2 then
+            tokens.Muted = ensureContrast(tokens.Text:Lerp(background, 0.4), background, 3.4)
+        end
+    end
+    local readable = { tokens.Background, tokens.Surface, tokens.SurfaceAlt, tokens.Dialog }
+    for _, key in ipairs({ "Success", "Warning", "Danger" }) do
+        if not overrides[key] then
+            tokens[key] = ensureAgainst(tokens[key], readable, bright and 4.2 or 3)
+        end
+    end
+    tokens.AccentText = ensureAgainst(tokens.Accent, readable, 3.4)
+    tokens.ToggleText = ensureAgainst(tokens.ToggleOn, readable, 3.4)
+    tokens.DockInk = WHITE
+    for _, key in ipairs({ "Success", "Warning", "Danger", "Muted", "Text" }) do
+        tokens["On" .. key] = inkOn(tokens[key])
+    end
+    tokens.OnAccent = inkOn(tokens.Accent)
+    tokens.TransCardLift = math.min(tokens.TransCard, 0.5)
+    tokens.TransTerminal = tokens.TransPanel * 0.5
+    tokens.RimColor = bright and BLACK or WHITE
     if bright then
         tokens.TransRim = math.min(1, (tokens.TransRim or 0.8) + 0.1)
         tokens.TransSheen = math.max(tokens.TransSheen or 1, 0.97)
@@ -1669,12 +1791,12 @@ function Window:_themeTokens()
 end
 
 function Window:_applyLighting(force)
-    local bright = luminance(self.Tokens.Background) > 0.55
+    local bright = isBrightColor(self.Tokens.Background)
     if bright == self._bright and not force then
         return
     end
     self._bright = bright
-    self:SetToken("RimColor", bright and Color3.new(0, 0, 0) or Color3.new(1, 1, 1))
+    self:SetToken("RimColor", bright and BLACK or WHITE)
     local strength = bright and 0.35 or 1
     for _, gradient in ipairs(self._vignettes) do
         gradient.Transparency = NumberSequence.new({
@@ -1721,6 +1843,9 @@ function Window:_applyTheme(silent)
     end
     self:SetTokens(changed)
     self:_applyLighting()
+    if next(changed) ~= nil then
+        self:_refreshStyled()
+    end
     for token, picker in pairs(self._colorPickers) do
         local target = self.Tokens[token]
         if target and picker.Value ~= target then
@@ -1739,6 +1864,15 @@ function Window:_applyTheme(silent)
     self:_persistTheme()
     if not silent then
         self:_emit("ThemeChanged", self:GetTheme())
+    end
+end
+
+function Window:_refreshStyled()
+    for _, hook in pairs(self._styleHooks) do
+        pcall(hook)
+    end
+    for _, tab in ipairs(self.AllTabs) do
+        tab:_applyLabel()
     end
 end
 
@@ -2135,6 +2269,9 @@ function Window:SetStyle(name, silent)
     end
     self.TerminalVisible = style.Terminal and not self.Metrics.Touch
     self:_applyStyleLayout()
+    if self.TerminalVisible and self._terminalBanner then
+        self._terminalBanner()
+    end
     for token, picker in pairs(self._colorPickers) do
         picker:Set(self.Tokens[token], true)
     end
@@ -3334,7 +3471,7 @@ function Window:_buildGui(options)
         Text = string.upper(string.sub(self.Title, 1, 1)),
         Font = "Bold",
         TextSize = 15,
-        TextColor3 = Color3.new(1, 1, 1),
+        Color = "OnAccent",
         ZIndex = 3,
     }, logo)
     local logoImage = new("ImageLabel", {
@@ -3558,6 +3695,18 @@ function Window:_buildGui(options)
         ScrollBarThickness = 0,
     }, rail)
     addList(self.RailList, 4)
+    local tabDivider = new("Frame", {
+        Name = "TabDivider",
+        Size = UDim2.new(1, 0, 0, 9),
+        LayoutOrder = 999,
+        Visible = false,
+    }, self.RailList)
+    self:Make("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.fromScale(0.5, 0.5),
+        Size = UDim2.new(1, -20, 0, 1),
+    }, tabDivider, { BackgroundColor3 = "Outline", BackgroundTransparency = "TransStroke" })
+    self.TabDivider = tabDivider
     local railBottom = new("Frame", {
         Name = "RailBottom",
         AnchorPoint = Vector2.new(0, 1),
@@ -3567,13 +3716,6 @@ function Window:_buildGui(options)
     }, rail)
     addList(railBottom, 6)
     self.RailBottom = railBottom
-    self.BuiltinHolder = new("Frame", {
-        Name = "Builtin",
-        Size = UDim2.new(1, 0, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
-        LayoutOrder = 1,
-    }, railBottom)
-    addList(self.BuiltinHolder, 4)
     local footer = self:Glass(railBottom, "Card", {
         Name = "Footer",
         Size = UDim2.new(1, 0, 0, 52),
@@ -3599,7 +3741,7 @@ function Window:_buildGui(options)
         Text = string.upper(string.sub(self.Title, 1, 1)),
         Font = "Bold",
         TextSize = 15,
-        TextColor3 = Color3.new(1, 1, 1),
+        Color = "OnAccent",
     }, footerLogo)
     self:ApplyIcon(footerImage, self.Icon or "sparkles", nil, function()
         footerLetter.Visible = false
@@ -3956,7 +4098,6 @@ function Window:SetTerminalVisible(visible)
 end
 
 function Window:_playIntro()
-    local metrics = self.Metrics
     local splash = self:Make("CanvasGroup", {
         Name = "Intro",
         Size = UDim2.fromScale(1, 1),
@@ -3983,7 +4124,7 @@ function Window:_playIntro()
         Text = string.upper(string.sub(self.Title, 1, 1)),
         Font = "Bold",
         TextSize = 34,
-        TextColor3 = Color3.new(1, 1, 1),
+        Color = "OnAccent",
     }, logo)
     local image = new("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -4231,13 +4372,14 @@ function Window:_createTab(options, builtin)
     end)
     tab:_applyNav()
     tab:_applySelected(false)
+    self:_syncTabDivider()
     return tab
 end
 
 function Tab:_applyLabel()
     local window = self.Window
     if window.StyleId == "ClaudeCode" then
-        local marker = self.Selected and string.format('<font color="%s">&gt;</font> ', hexOf(window.Tokens.Accent)) or "  "
+        local marker = self.Selected and string.format('<font color="%s">&gt;</font> ', hexOf(window.Tokens.AccentText)) or "  "
         self.Label.Text = marker .. escapeRich(string.lower(self.Title))
     else
         self.Label.Text = escapeRich(window:Display(self.Title))
@@ -4256,8 +4398,6 @@ function Tab:_applyNav()
     local dock = style.Nav == "Dock"
     if dock then
         holder.Parent = window.Dock
-    elseif self.Builtin then
-        holder.Parent = window.BuiltinHolder
     else
         holder.Parent = window.RailList
     end
@@ -4274,6 +4414,7 @@ function Tab:_applyNav()
         self.FillCorner.CornerRadius = UDim.new(0, 12)
         self.ButtonCorner.CornerRadius = UDim.new(0, 12)
         fill.BackgroundTransparency = 0
+        icon.Visible = true
         icon.AnchorPoint = Vector2.new(0.5, 0.5)
         icon.Position = UDim2.fromScale(0.5, 0.5)
         icon.Size = UDim2.fromOffset(metrics.DockIcon * 0.52, metrics.DockIcon * 0.52)
@@ -4323,6 +4464,7 @@ function Tab:_applyNav()
         label.Visible = false
     end
     fallback.Visible = icon.Image == "" and (icon.Visible or dock or not window:_showLabels())
+    window:_applyGradientEntry(self.FillEntry)
     self.Dot.Visible = dock
     self.Glow.Enabled = style.Glow
     self:_applyLabel()
@@ -4361,26 +4503,45 @@ function Tab:_applySelected(animate)
             end
         end
     end
+    local function ink(instance, property, token)
+        local before = instance[property]
+        window:Bind(instance, property, token)
+        local after = instance[property]
+        if animate and before ~= after then
+            instance[property] = before
+            window:Motion("Tab", instance, { [property] = after })
+        end
+    end
+    local tone
     if style.Nav == "Dock" then
+        tone = "DockInk"
         set(self.Bar, { BackgroundTransparency = 1, Size = UDim2.new(0, 3, 0.2, 0) })
         set(self.Dot, { BackgroundTransparency = selected and 0 or 1 })
+        set(self.Glow, { Transparency = 1 })
         set(self.Icon, { ImageTransparency = 0 })
         set(self.IconFallback, { TextTransparency = 0 })
     elseif window:_showLabels() then
         local filled = selected and style.Id ~= "ClaudeCode"
+        tone = filled and "OnAccent" or "Text"
         set(self.Bar, { BackgroundTransparency = selected and 0 or 1, Size = UDim2.new(0, 3, selected and 0.55 or 0.2, 0) })
         set(self.Fill, { BackgroundTransparency = filled and 0 or 1 })
         set(self.Label, { TextTransparency = selected and 0 or 0.4 })
         set(self.Icon, { ImageTransparency = selected and 0 or 0.4 })
         set(self.IconFallback, { TextTransparency = selected and 0 or 0.4 })
         set(self.Glow, { Transparency = 1 })
+        set(self.Dot, { BackgroundTransparency = 1 })
     else
+        tone = selected and "OnAccent" or "Text"
         set(self.Bar, { BackgroundTransparency = selected and 0 or 1, Size = UDim2.new(0, 3, selected and 0.5 or 0.2, 0) })
         set(self.Fill, { BackgroundTransparency = selected and 0 or 1 })
         set(self.Icon, { ImageTransparency = selected and 0 or 0.35 })
         set(self.IconFallback, { TextTransparency = selected and 0 or 0.35 })
         set(self.Glow, { Transparency = (selected and style.Glow) and 0.35 or 1 })
+        set(self.Dot, { BackgroundTransparency = 1 })
     end
+    ink(self.Label, "TextColor3", tone)
+    ink(self.Icon, "ImageColor3", tone)
+    ink(self.IconFallback, "TextColor3", tone)
     self:_applyLabel()
 end
 
@@ -4561,7 +4722,6 @@ function Category:SetBadge(value, tone)
             AutomaticSize = Enum.AutomaticSize.X,
             Font = "Bold",
             TextSize = window.Metrics.Small - 1,
-            TextColor3 = Color3.new(1, 1, 1),
             BackgroundColor3 = Color3.new(0.9, 0.2, 0.2),
             BackgroundTransparency = 0,
             Visible = false,
@@ -4576,7 +4736,9 @@ function Category:SetBadge(value, tone)
         return
     end
     self.BadgeLabel.Text = type(value) == "number" and (value > 99 and "99+" or tostring(value)) or tostring(value)
-    window:Bind(self.BadgeLabel, "BackgroundColor3", TONES[tone or "Danger"] or "Danger")
+    local badgeTone = TONES[tone or "Danger"] or "Danger"
+    window:Bind(self.BadgeLabel, "BackgroundColor3", badgeTone)
+    window:Bind(self.BadgeLabel, "TextColor3", "On" .. badgeTone)
     self.BadgeLabel.Visible = true
 end
 
@@ -4954,6 +5116,24 @@ function Tab:_updateEmpty(query)
     end
 end
 
+function Window:_syncTabDivider()
+    local divider = self.TabDivider
+    if not divider then
+        return
+    end
+    local user, builtin = false, false
+    for _, tab in ipairs(self.AllTabs) do
+        if not tab.Hidden then
+            if tab.Builtin then
+                builtin = true
+            else
+                user = true
+            end
+        end
+    end
+    divider.Visible = user and builtin
+end
+
 function Tab:SetHidden(hidden)
     hidden = hidden == true
     if self.Hidden == hidden then
@@ -4962,6 +5142,7 @@ function Tab:SetHidden(hidden)
     local window = self.Window
     self.Hidden = hidden
     self.Holder.Visible = not hidden
+    window:_syncTabDivider()
     if hidden and window.SelectedTab == self then
         local fallback = window.Tabs[1]
         if not fallback or fallback.Hidden then
@@ -5002,7 +5183,6 @@ function Tab:SetBadge(value, tone)
             AutomaticSize = Enum.AutomaticSize.X,
             Font = "Bold",
             TextSize = window.Metrics.Small - 1,
-            TextColor3 = Color3.new(1, 1, 1),
             BackgroundTransparency = 0,
             ZIndex = 8,
             Visible = false,
@@ -5014,7 +5194,9 @@ function Tab:SetBadge(value, tone)
     end
     self.BadgeValue = value
     self.Badge.Text = type(value) == "number" and (value > 99 and "99+" or tostring(value)) or tostring(value)
-    window:Bind(self.Badge, "BackgroundColor3", TONES[tone or "Danger"] or "Danger")
+    local badgeTone = TONES[tone or "Danger"] or "Danger"
+    window:Bind(self.Badge, "BackgroundColor3", badgeTone)
+    window:Bind(self.Badge, "TextColor3", "On" .. badgeTone)
     if not self.Badge.Visible then
         self.Badge.Visible = true
         window:Tween(self.BadgeScale, { Scale = 0.6 }, 0)
@@ -5235,26 +5417,35 @@ local function setRowDisabled(row, disabled)
     row.Cover.Visible = disabled == true
 end
 
-function Window:_ripple(frame, input)
+function Window:_ripple(frame, input, layer)
     if not self.Effects.Ripple then
         return
     end
     local scale = self.Scale.Scale
-    local x = (input.Position.X - frame.AbsolutePosition.X) / scale
     local width = frame.AbsoluteSize.X / scale
+    local height = frame.AbsoluteSize.Y / scale
+    local x = math.clamp((input.Position.X - frame.AbsolutePosition.X) / scale, 0, width)
+    local y = math.clamp((input.Position.Y - frame.AbsolutePosition.Y) / scale, 0, height)
+    local sharp = self.Style.Gamer == true
+    local reach = math.sqrt(math.max(x, width - x) ^ 2 + math.max(y, height - y) ^ 2)
     local ring = new("Frame", {
         AnchorPoint = Vector2.new(0.5, 0.5),
-        Position = UDim2.new(0, x, 0.5, 0),
-        Size = UDim2.fromOffset(0, 0),
-        BackgroundColor3 = Color3.new(1, 1, 1),
-        BackgroundTransparency = 0.8,
-        Rotation = self.Style.Gamer and 45 or 0,
-        ZIndex = 2,
+        Position = UDim2.fromOffset(x, sharp and height / 2 or y),
+        Size = UDim2.fromOffset(0, sharp and height or 0),
+        BackgroundColor3 = self.Tokens.RimColor,
+        BackgroundTransparency = 0.84,
+        Active = false,
+        ZIndex = layer or 2,
     }, frame)
-    new("UICorner", { CornerRadius = self.Tokens.RadPill }, ring)
-    local diameter = math.max(width, 80) * 1.7
-    self:Tween(ring, { Size = UDim2.fromOffset(diameter, diameter), BackgroundTransparency = 1 }, 0.6, Enum.EasingStyle.Quad)
-    task.delay(0.65, function()
+    local target
+    if sharp then
+        target = UDim2.fromOffset(math.max(x, width - x) * 2 + 4, height)
+    else
+        new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, ring)
+        target = UDim2.fromOffset(reach * 2, reach * 2)
+    end
+    self:Tween(ring, { Size = target, BackgroundTransparency = 1 }, sharp and 0.36 or 0.5, Enum.EasingStyle.Quint)
+    task.delay(0.55, function()
         ring:Destroy()
     end)
 end
@@ -5267,12 +5458,12 @@ function Window:_wireRow(row)
         local tokens = self.Tokens
         local transparency = tokens.TransCard
         if pressed then
-            transparency = math.min(1, transparency + 0.2)
+            transparency = math.min(transparency, 0.4)
         elseif hovered then
             transparency = math.min(transparency, 0.55)
         end
         self:Motion(pressed and "Press" or "Hover", frame, {
-            BackgroundColor3 = hovered and tokens.Hover or tokens.Surface,
+            BackgroundColor3 = (hovered or pressed) and tokens.Hover or tokens.Surface,
             BackgroundTransparency = transparency,
         })
         local strokeColor = tokens.Outline
@@ -5508,7 +5699,7 @@ local function createRow(section, options, mode, gridItem)
             end
             self.Desc.Visible = true
             self.Desc.Text = text
-            window:Bind(self.Desc, "TextColor3", TONES[tone or "Muted"] or "Muted")
+            window:Bind(self.Desc, "TextColor3", TEXT_TONES[tone or "Muted"] or "Muted")
         end
         self:Relayout()
     end
@@ -5708,7 +5899,7 @@ function Section:AddToggle(options)
         Text = "[ ]",
         Font = "Semi",
         TextSize = metrics.Small + 1,
-        Color = "ToggleOn",
+        Color = "ToggleText",
     }, nil)
     attachControl(row, track, 100)
     attachControl(row, stateText, 100)
@@ -5727,7 +5918,8 @@ function Section:AddToggle(options)
         local knobX = on and (trackWidth - knobSize - 3) or 3
         local knobColor = on and Color3.new(1, 1, 1) or window.Tokens.Knob
         local glowTransparency = (on and style.Glow) and 0.45 or 1
-        local textTransparency = on and 0 or 0.55
+        local textTransparency = 0
+        window:Bind(stateText, "TextColor3", on and "ToggleText" or "Muted")
         if animate then
             window:Tween(fill, { BackgroundTransparency = fillTransparency }, 0.2)
             window:Tween(knob, { Position = UDim2.new(0, knobX, 0.5, 0), BackgroundColor3 = knobColor }, 0.25, Enum.EasingStyle.Quint)
@@ -5824,7 +6016,7 @@ function Section:AddSlider(options)
         Font = "Semi",
         TextSize = metrics.Text - 1,
         TextXAlignment = Enum.TextXAlignment.Right,
-    }, row.Frame, { TextColor3 = "Accent" })
+    }, row.Frame, { TextColor3 = "AccentText" })
     local trackY = metrics.SliderHeight - metrics.TrackHeight - 10
     local track = window:Make("Frame", {
         Name = "Track",
@@ -6047,12 +6239,12 @@ function Section:AddDropdown(options)
             empty = dropdown.Value == nil
             valueLabel.Text = dropdown.Value or options.Placeholder or "Select..."
         end
-        valueLabel.TextTransparency = empty and 0.5 or 0
+        window:Bind(valueLabel, "TextColor3", empty and "Muted" or "Text")
     end
     local function refreshItems()
         for option, item in pairs(items) do
             local selected = isSelected(option)
-            item.Label.TextColor3 = selected and window.Tokens.Accent or window.Tokens.Text
+            window:Bind(item.Label, "TextColor3", selected and "AccentText" or "Text")
             item.Button.BackgroundTransparency = selected and 0.7 or 1
         end
     end
@@ -6395,14 +6587,20 @@ function Window:_createButtonRow(parent, buttons, layoutOrder, section, transien
     for index, definition in ipairs(buttons) do
         local label = definition.Text or definition.Title or "Button"
         local primary = definition.Primary == true
-        local holder = self:Make("Frame", {
-            Name = "ButtonHolder",
+        local slot = new("Frame", {
+            Name = "ButtonSlot",
             Size = UDim2.new(1 / count, -math.ceil(metrics.Gap * (count - 1) / count), 1, 0),
             LayoutOrder = index,
+        }, frame)
+        local holder = self:Make("Frame", {
+            Name = "ButtonHolder",
+            AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5),
+            Size = UDim2.fromScale(1, 1),
             ClipsDescendants = true,
             BackgroundColor3 = primary and Color3.new(1, 1, 1) or nil,
             BackgroundTransparency = primary and 0 or nil,
-        }, frame, (not primary) and { BackgroundColor3 = "SurfaceAlt", BackgroundTransparency = "TransField" } or nil)
+        }, slot, (not primary) and { BackgroundColor3 = "SurfaceAlt", BackgroundTransparency = "TransField" } or nil)
         self:Corner(holder, "RadControl")
         local stroke
         if primary then
@@ -6411,23 +6609,30 @@ function Window:_createButtonRow(parent, buttons, layoutOrder, section, transien
         else
             stroke = self:Stroke(holder)
         end
+        local shade = self:Make("Frame", {
+            Name = "Shade",
+            Size = UDim2.fromScale(1, 1),
+            BackgroundTransparency = 1,
+            Active = false,
+            ZIndex = 1,
+        }, holder, { BackgroundColor3 = "RimColor" })
+        self:Corner(shade, "RadControl")
         local text = self:Make("TextLabel", {
             Name = "Label",
             Size = UDim2.fromScale(1, 1),
             Text = self:Display(label),
             Font = "Semi",
             TextSize = metrics.Text,
-            TextColor3 = primary and Color3.new(1, 1, 1) or nil,
+            Color = primary and "OnAccent" or nil,
             ZIndex = 2,
         }, holder)
         local hit = new("TextButton", { Name = "Hit", Size = UDim2.fromScale(1, 1), ZIndex = 3 }, holder)
         local pressScale = new("UIScale", {}, holder)
         local hovered = false
-        local function rest(motionName)
+        local pressed = false
+        local function settle(motionName)
             local tokens = self.Tokens
-            if primary then
-                self:Motion(motionName, holder, { BackgroundTransparency = hovered and 0.1 or 0 })
-            else
+            if not primary then
                 self:Motion(motionName, holder, {
                     BackgroundColor3 = hovered and tokens.Hover or tokens.SurfaceAlt,
                     BackgroundTransparency = tokens.TransField,
@@ -6437,23 +6642,33 @@ function Window:_createButtonRow(parent, buttons, layoutOrder, section, transien
                     Transparency = hovered and 0.45 or tokens.TransStroke,
                 })
             end
+            local wash = 1
+            if pressed then
+                wash = primary and 0.8 or 0.86
+            elseif hovered and primary then
+                wash = 0.9
+            end
+            self:Motion(motionName, shade, { BackgroundTransparency = wash })
         end
         connect(hit.MouseEnter, function()
             hovered = true
-            rest("Hover")
+            settle("Hover")
         end)
         connect(hit.MouseLeave, function()
             hovered = false
-            rest("Hover")
-            self:Motion("Hover", pressScale, { Scale = 1 })
+            pressed = false
+            settle("Hover")
+            self:Motion("Release", pressScale, { Scale = 1 })
         end)
         connect(hit.MouseButton1Down, function()
-            self:Motion("Press", holder, { BackgroundTransparency = primary and 0.22 or math.min(1, self.Tokens.TransField + 0.25) })
+            pressed = true
+            settle("Press")
             self:Motion("Press", pressScale, { Scale = 0.97 })
         end)
         connect(hit.MouseButton1Up, function()
-            rest("Press")
-            self:Motion("Spring", pressScale, { Scale = 1 })
+            pressed = false
+            settle("Release")
+            self:Motion("Release", pressScale, { Scale = 1 })
         end)
         local element = {
             Type = "Button",
@@ -6559,7 +6774,7 @@ function Window:_createButtonRow(parent, buttons, layoutOrder, section, transien
         end)
         connect(hit.InputBegan, function(input)
             if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-                self:_ripple(holder, input)
+                self:_ripple(holder, input, 1)
             end
         end)
         if definition.NoBind ~= true and definition.Internal ~= true then
@@ -6665,7 +6880,7 @@ function Section:AddParagraph(options)
         Text = resolve(options.Content or options.Text),
         TextSize = metrics.Text - 1,
         TextWrapped = true,
-        Color = TONES[options.Tone or "Muted"] or "Muted",
+        Color = TEXT_TONES[options.Tone or "Muted"] or "Muted",
         TextXAlignment = alignments[options.Align] or Enum.TextXAlignment.Left,
         TextYAlignment = Enum.TextYAlignment.Top,
         RichText = options.RichText == true,
@@ -6690,7 +6905,7 @@ function Section:AddParagraph(options)
         content.RichText = enabled == true
     end
     function paragraph:SetTone(tone)
-        window:Bind(content, "TextColor3", TONES[tone] or "Muted")
+        window:Bind(content, "TextColor3", TEXT_TONES[tone] or "Muted")
     end
     function paragraph:SetAlign(align)
         local value = alignments[align]
@@ -6789,7 +7004,7 @@ function Section:AddProgressBar(options)
         Font = "Semi",
         TextSize = metrics.Text - 1,
         TextXAlignment = Enum.TextXAlignment.Right,
-    }, row.Frame, { TextColor3 = "Accent" })
+    }, row.Frame, { TextColor3 = "AccentText" })
     local track = window:Make("Frame", {
         Name = "Track",
         Position = UDim2.fromOffset(12, metrics.SliderHeight - metrics.TrackHeight - 10),
@@ -7849,7 +8064,7 @@ function Section:AddCard(options)
         LayoutOrder = self:_nextOrder(),
         ClipsDescendants = true,
     })
-    frame.BackgroundTransparency = math.min(window.Tokens.TransCard, 0.5)
+    window:Bind(frame, "BackgroundTransparency", "TransCardLift")
     if options.Build or options.Layout == "Custom" then
         local content = new("Frame", { Name = "CardContent", Size = UDim2.fromScale(1, 1) }, frame)
         addPadding(content, 10)
@@ -8081,7 +8296,7 @@ function Section:AddPromo(options)
         Text = string.upper(string.sub(window.Title, 1, 1)),
         Font = "Bold",
         TextSize = 18,
-        TextColor3 = Color3.new(1, 1, 1),
+        Color = "OnAccent",
     }, logo)
     local image = new("ImageLabel", {
         AnchorPoint = Vector2.new(0.5, 0.5),
@@ -8176,7 +8391,7 @@ function Window:_createKeybind(row, options)
     local function render()
         local listening = self._listening == keybind
         button.Text = listening and "..." or keyToText(keybind.Key)
-        button.TextColor3 = listening and self.Tokens.Accent or self.Tokens.Text
+        self:Bind(button, "TextColor3", listening and "AccentText" or "Text")
     end
     keybind._render = render
     function keybind:SetKey(key, silent)
@@ -8505,7 +8720,7 @@ function Window:_buildTerminal(body)
         AnchorPoint = Vector2.new(1, 0),
         Visible = false,
     })
-    terminal.BackgroundTransparency = 0.06
+    self:Bind(terminal, "BackgroundTransparency", "TransTerminal")
     self.Terminal = terminal
     local mono = { FontFace = "FontMono" }
     local monoSemi = { FontFace = "FontMonoSemi" }
@@ -8615,7 +8830,7 @@ function Window:TerminalPrint(text, tone, rich)
     if not scroll or self.Destroyed then
         return
     end
-    local token = TONES[tone or "Text"] or "Text"
+    local token = TEXT_TONES[tone or "Text"] or "Text"
     local content = rich and text or tostring(text)
     local line = self:Make("TextLabel", {
         Size = UDim2.new(1, 0, 0, 0),
@@ -8693,7 +8908,7 @@ function Window:_describe(element)
 end
 
 function Window:_commandText(entry)
-    local accent = hexOf(self.Tokens.Accent)
+    local accent = hexOf(self.Tokens.AccentText)
     local muted = hexOf(self.Tokens.Muted)
     local state = escapeRich(self:_describe(entry.Element))
     if #state > 18 then
@@ -8826,7 +9041,7 @@ function Window:_updateFavorite(entry)
     if actionable then
         entry.Chip.Text = text
         local lit = target.Type == "Button" or target.Value == true
-        self:Bind(entry.Chip, "TextColor3", lit and "Accent" or "Muted")
+        self:Bind(entry.Chip, "TextColor3", lit and "AccentText" or "Muted")
         self:Bind(entry.Chip, "BackgroundColor3", lit and "Accent" or "SurfaceAlt")
         entry.Chip.BackgroundTransparency = lit and 0.82 or 0.35
     elseif text then
@@ -9791,7 +10006,7 @@ function Window:_paletteFill(row, entry, tokens)
     row.Title.Visible = true
     row.Sub.Visible = true
     row.Glyph.Text = entry.Glyph or "-"
-    row.Title.Text = highlightText(entry.Title, tokens, hexOf(self.Tokens.Accent))
+    row.Title.Text = highlightText(entry.Title, tokens, hexOf(self.Tokens.AccentText))
     row.Sub.Text = entry.Sub or ""
     local rightPad = 8
     local feature = entry.Feature
@@ -9799,7 +10014,7 @@ function Window:_paletteFill(row, entry, tokens)
     if feature then
         local pinned = self:IsPinned(feature)
         row.Pin.Text = "*"
-        self:Bind(row.Pin, "TextColor3", pinned and "Accent" or "Muted")
+        self:Bind(row.Pin, "TextColor3", pinned and "AccentText" or "Muted")
         rightPad = rightPad + 28
     end
     row.Chip.Visible = false
@@ -9816,7 +10031,7 @@ function Window:_paletteFill(row, entry, tokens)
             row.Chip.Text = chip
             row.Chip.Position = UDim2.new(1, -rightPad, 0.5, 0)
             local lit = kind == "Toggle" and feature.Element.Value == true or kind == "Button"
-            self:Bind(row.Chip, "TextColor3", lit and "Accent" or "Muted")
+            self:Bind(row.Chip, "TextColor3", lit and "AccentText" or "Muted")
             self:Bind(row.Chip, "BackgroundColor3", lit and "Accent" or "SurfaceAlt")
             row.Chip.BackgroundTransparency = lit and 0.82 or 0.35
             rightPad = rightPad + #chip * 7 + 24
@@ -11750,7 +11965,7 @@ function Window:_buildAbout(options)
     styles:AddButtonRow({ buttons[3], buttons[4] })
     local log = tab:AddSection({ Title = "Changelog", Icon = "file-text", Side = "Right" })
     log:AddChangelog({
-        { Version = "v3.1.0", Text = "Liquid Glass 2.0, mobile layout, command palette, favorites, theme editor, 9 new widgets", Date = "11/1/2026" },
+        { Version = "v3.1.0", Text = "Liquid Glass 2.0, mobile layout, command palette, favorites, theme editor, adaptive light and dark text, 9 new widgets", Date = "11/1/2026" },
         { Version = "v2.0.0", Text = "Perplexity: 4 styles, icons, images, terminal", Date = "10/17/2026" },
         { Version = "v1.1.0", Text = "Search, dialogs, resize", Date = "10/16/2026" },
         { Version = "v1.0.0", Text = "UI source and example", Date = "10/15/2026" },
@@ -11943,7 +12158,7 @@ function Library:CreateWindow(options)
         end
     end
     self.Tokens = self:_themeTokens()
-    self._bright = luminance(self.Tokens.Background) > 0.55
+    self._bright = isBrightColor(self.Tokens.Background)
     self.AutoSave = self.Prefs.AutoSave
     self.ActiveConfig = self.ActiveConfig or self.Prefs.Active
     self.TerminalVisible = self.Style.Terminal and not touch
